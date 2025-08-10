@@ -1,0 +1,15 @@
+{
+  "modelId": "production_model_1754846975268",
+  "version": "1.0.0",
+  "timestamp": "2025-08-10T17:29:35.268Z",
+  "performance": {
+    "f1Score": 0.925,
+    "accuracy": 0.887
+  },
+  "clusters": 5,
+  "deploymentStatus": "ready",
+  "trainingData": {
+    "samples": 200,
+    "source": "rural_healthcare_datasets"
+  }
+}

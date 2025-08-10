@@ -74,12 +74,16 @@ const ProfileScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="person" size={24} color="#667eea" />
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Ionicons name="person-circle" size={32} color="#ffffff" />
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.headerTitle}>👤 My Profile</Text>
+          <Text style={styles.headerSubtitle}>Manage your account</Text>
+        </View>
         <TouchableOpacity
           style={styles.editButton}
           onPress={() => setIsEditing(!isEditing)}
         >
+          <Ionicons name={isEditing ? "close" : "create"} size={20} color="#ffffff" />
           <Text style={styles.editButtonText}>
             {isEditing ? 'Cancel' : 'Edit'}
           </Text>
@@ -90,15 +94,21 @@ const ProfileScreen = () => {
         {/* Profile Picture Section */}
         <View style={styles.profileSection}>
           <View style={styles.profileImage}>
-            <Ionicons name="person" size={60} color="#667eea" />
+            <Ionicons name="person" size={80} color="#2E7D32" />
           </View>
           <Text style={styles.profileName}>{user?.name}</Text>
-          <Text style={styles.profileRole}>{getRoleDisplayName(user?.role || '')}</Text>
+          <View style={styles.profileRoleContainer}>
+            <Ionicons name="shield" size={20} color="#2E7D32" />
+            <Text style={styles.profileRole}>{getRoleDisplayName(user?.role || '')}</Text>
+          </View>
         </View>
 
         {/* Profile Information */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Personal Information</Text>
+          <View style={styles.cardHeader}>
+            <Ionicons name="information-circle" size={24} color="#2E7D32" />
+            <Text style={styles.cardTitle}>Personal Information</Text>
+          </View>
           
           <View style={styles.formItem}>
             <Text style={styles.formLabel}>Full Name</Text>
@@ -200,7 +210,10 @@ const ProfileScreen = () => {
 
         {/* Account Actions */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Account Actions</Text>
+          <View style={styles.cardHeader}>
+            <Ionicons name="settings" size={24} color="#2E7D32" />
+            <Text style={styles.cardTitle}>Settings & Support</Text>
+          </View>
           
           <TouchableOpacity style={styles.actionButton}>
             <Ionicons name="notifications-outline" size={20} color="#667eea" />
@@ -259,34 +272,45 @@ const webSelectStyles = {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f0f8f0',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingHorizontal: 25,
+    paddingVertical: 25,
+    backgroundColor: '#2E7D32',
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
+  },
+  headerTextContainer: {
+    flex: 1,
+    marginLeft: 15,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
-    marginLeft: 10,
+    color: '#ffffff',
+    marginBottom: 3,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#c8e6c9',
   },
   editButton: {
-    backgroundColor: '#667eea',
-    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
     paddingHorizontal: 15,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   editButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 5,
   },
   content: {
     flex: 1,
@@ -294,57 +318,76 @@ const styles = StyleSheet.create({
   },
   profileSection: {
     alignItems: 'center',
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 30,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 35,
+    margin: 25,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: '#e8f5e8',
   },
   profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#f8f9fa',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#f0f8f0',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 20,
+    borderWidth: 3,
+    borderColor: '#2E7D32',
   },
   profileName: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
+    color: '#2E7D32',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  profileRoleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   profileRole: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#666',
+    marginLeft: 8,
   },
   card: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 25,
+    marginHorizontal: 25,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: '#e8f5e8',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 20,
+    color: '#2E7D32',
+    marginLeft: 10,
   },
   formItem: {
     marginBottom: 20,

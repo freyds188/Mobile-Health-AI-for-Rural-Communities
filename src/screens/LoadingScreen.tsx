@@ -18,6 +18,18 @@ const LoadingScreen = ({ navigation }: any) => {
     }
   }, [user, isLoading, navigation]);
 
+  // Emergency timeout - if loading takes too long, force navigation to login
+  useEffect(() => {
+    const emergencyTimeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn('⚠️ LoadingScreen: Emergency timeout triggered, forcing navigation to login');
+        navigation.replace('Login');
+      }
+    }, 15000); // 15 second emergency timeout
+
+    return () => clearTimeout(emergencyTimeout);
+  }, [isLoading, navigation]);
+
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
@@ -27,8 +39,13 @@ const LoadingScreen = ({ navigation }: any) => {
         <View style={styles.content}>
           <Ionicons name="medical" size={100} color="white" />
           <Text style={styles.title}>Health AI Assistant</Text>
-          <Text style={styles.subtitle}>Loading your health data...</Text>
+          <Text style={styles.subtitle}>
+            {isLoading ? 'Loading your health data...' : 'Initializing...'}
+          </Text>
           <ActivityIndicator size="large" color="white" style={styles.spinner} />
+          <Text style={styles.debugText}>
+            {isLoading ? 'Initializing services...' : 'Ready to navigate'}
+          </Text>
         </View>
       </LinearGradient>
     </SafeAreaView>
@@ -62,6 +79,13 @@ const styles = StyleSheet.create({
   },
   spinner: {
     marginTop: 20,
+  },
+  debugText: {
+    fontSize: 14,
+    color: 'white',
+    opacity: 0.7,
+    marginTop: 10,
+    fontStyle: 'italic',
   },
 });
 

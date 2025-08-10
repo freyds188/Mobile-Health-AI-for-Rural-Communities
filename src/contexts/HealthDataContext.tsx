@@ -1,5 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { dataService, HealthRecord, AnalysisReport } from '../services/DataService';
+import { databaseService } from '../services/DatabaseService';
+import { useAuth } from './AuthContext';
+import ModelDeploymentService from '../services/ModelDeploymentService';
+import { MachineLearningService, HealthDataInput } from '../services/MachineLearningService';
 
 export interface HealthData {
   id: string;
@@ -24,15 +28,29 @@ export interface HealthInsight {
   patterns: string[];
   recommendations: string[];
   confidence: number; // 0-1
+  dataPoints: number;
+  trendsAnalysis: {
+    severityTrend: 'improving' | 'stable' | 'worsening';
+    sleepTrend: 'improving' | 'stable' | 'worsening';
+    stressTrend: 'improving' | 'stable' | 'worsening';
+    exerciseTrend: 'improving' | 'stable' | 'worsening';
+  };
 }
 
 interface HealthDataContextType {
   healthData: HealthData[];
   insights: HealthInsight[];
-  addHealthData: (data: Omit<HealthData, 'id' | 'timestamp'>) => Promise<void>;
+  isLoading: boolean;
+  addHealthData: (data: Omit<HealthData, 'id' | 'timestamp' | 'userId'>) => Promise<boolean>;
   getHealthData: (userId: string) => HealthData[];
-  analyzeHealthData: (userId: string) => Promise<HealthInsight>;
+  analyzeHealthData: (userId: string) => Promise<HealthInsight | null>;
   getInsights: (userId: string) => HealthInsight[];
+  refreshData: () => Promise<void>;
+  // New deployed model features
+  deployModel: () => Promise<boolean>;
+  getModelInfo: () => any;
+  getPredictionStats: () => any;
+  triggerModelRetraining: () => Promise<boolean>;
 }
 
 const HealthDataContext = createContext<HealthDataContextType | undefined>(undefined);
@@ -45,152 +63,164 @@ export const useHealthData = () => {
   return context;
 };
 
-// K-means clustering implementation
-class KMeansClusterer {
-  private k: number;
-  private maxIterations: number;
-
-  constructor(k: number = 3, maxIterations: number = 100) {
-    this.k = k;
-    this.maxIterations = maxIterations;
-  }
-
-  private calculateDistance(point1: number[], point2: number[]): number {
-    return Math.sqrt(
-      point1.reduce((sum, val, i) => sum + Math.pow(val - point2[i], 2), 0)
-    );
-  }
-
-  private initializeCentroids(data: number[][]): number[][] {
-    const centroids: number[][] = [];
-    const dataLength = data.length;
-    
-    for (let i = 0; i < this.k; i++) {
-      const randomIndex = Math.floor(Math.random() * dataLength);
-      centroids.push([...data[randomIndex]]);
-    }
-    
-    return centroids;
-  }
-
-  private assignToClusters(data: number[][], centroids: number[][]): number[] {
-    const assignments: number[] = [];
-    
-    for (const point of data) {
-      let minDistance = Infinity;
-      let clusterIndex = 0;
-      
-      for (let i = 0; i < centroids.length; i++) {
-        const distance = this.calculateDistance(point, centroids[i]);
-        if (distance < minDistance) {
-          minDistance = distance;
-          clusterIndex = i;
-        }
-      }
-      
-      assignments.push(clusterIndex);
-    }
-    
-    return assignments;
-  }
-
-  private updateCentroids(data: number[][], assignments: number[]): number[][] {
-    const centroids: number[][] = [];
-    const dimensions = data[0].length;
-    
-    for (let i = 0; i < this.k; i++) {
-      const clusterPoints = data.filter((_, index) => assignments[index] === i);
-      
-      if (clusterPoints.length === 0) {
-        // If cluster is empty, initialize with random point
-        const randomIndex = Math.floor(Math.random() * data.length);
-        centroids.push([...data[randomIndex]]);
-      } else {
-        const centroid = new Array(dimensions).fill(0);
-        
-        for (const point of clusterPoints) {
-          for (let j = 0; j < dimensions; j++) {
-            centroid[j] += point[j];
-          }
-        }
-        
-        for (let j = 0; j < dimensions; j++) {
-          centroid[j] /= clusterPoints.length;
-        }
-        
-        centroids.push(centroid);
-      }
-    }
-    
-    return centroids;
-  }
-
-  cluster(data: number[][]): { assignments: number[]; centroids: number[][] } {
-    let centroids = this.initializeCentroids(data);
-    let assignments: number[] = [];
-    
-    for (let iteration = 0; iteration < this.maxIterations; iteration++) {
-      const newAssignments = this.assignToClusters(data, centroids);
-      
-      // Check for convergence
-      if (assignments.length > 0 && 
-          JSON.stringify(newAssignments) === JSON.stringify(assignments)) {
-        break;
-      }
-      
-      assignments = newAssignments;
-      centroids = this.updateCentroids(data, assignments);
-    }
-    
-    return { assignments, centroids };
-  }
-}
-
 export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
   const [healthData, setHealthData] = useState<HealthData[]>([]);
   const [insights, setInsights] = useState<HealthInsight[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Initialize ML services
+  const [deploymentService] = useState(new ModelDeploymentService());
+  const [mlService] = useState(new MachineLearningService());
 
   useEffect(() => {
-    loadHealthData();
-  }, []);
+    if (user) {
+      loadHealthData();
+    } else {
+      // Clear data when user logs out
+      setHealthData([]);
+      setInsights([]);
+    }
+  }, [user]);
 
   const loadHealthData = async () => {
+    if (!user) return;
+
     try {
-      const storedData = await AsyncStorage.getItem('healthData');
-      const storedInsights = await AsyncStorage.getItem('healthInsights');
+      setIsLoading(true);
+      console.log('🔄 Loading health data for user:', user.id);
       
-      if (storedData) {
-        setHealthData(JSON.parse(storedData).map((item: any) => ({
-          ...item,
-          timestamp: new Date(item.timestamp)
-        })));
+      // Load health records
+      const records = await dataService.getHealthData(user.id);
+      console.log('📊 Loaded health records from database:', records.length);
+      
+      const formattedRecords: HealthData[] = records.map(record => ({
+        id: record.id,
+        userId: record.userId,
+        timestamp: record.timestamp,
+        symptoms: record.symptoms,
+        severity: record.severity,
+        behavior: record.behavior,
+        notes: record.notes
+      }));
+      
+      setHealthData(formattedRecords);
+      console.log('✅ Health data loaded and set in context');
+      
+      // Load existing insights from database
+      try {
+        const dbInsights = await databaseService.getHealthInsights(user.id);
+        console.log('🧠 Loaded insights from database:', dbInsights.length);
+        
+        const formattedInsights: HealthInsight[] = dbInsights.map(insight => ({
+          id: insight.id,
+          userId: insight.userId,
+          timestamp: new Date(insight.timestamp),
+          riskLevel: insight.riskLevel,
+          patterns: JSON.parse(insight.patterns),
+          recommendations: JSON.parse(insight.recommendations),
+          confidence: insight.confidence,
+          dataPoints: 0, // Will be calculated when needed
+          trendsAnalysis: {
+            severityTrend: 'stable',
+            sleepTrend: 'stable',
+            stressTrend: 'stable',
+            exerciseTrend: 'stable'
+          }
+        }));
+        
+        setInsights(formattedInsights);
+        console.log('✅ Insights loaded and set in context');
+      } catch (insightError) {
+        console.warn('⚠️ Failed to load insights:', insightError);
+        // Continue without insights if they fail to load
       }
       
-      if (storedInsights) {
-        setInsights(JSON.parse(storedInsights).map((item: any) => ({
-          ...item,
-          timestamp: new Date(item.timestamp)
-        })));
-      }
     } catch (error) {
-      console.error('Error loading health data:', error);
+      console.error('❌ Error loading health data:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const addHealthData = async (data: Omit<HealthData, 'id' | 'timestamp'>) => {
+  const addHealthData = async (data: Omit<HealthData, 'id' | 'timestamp' | 'userId'>): Promise<boolean> => {
+    if (!user) {
+      console.error('❌ No user logged in');
+      return false;
+    }
+
     try {
-      const newHealthData: HealthData = {
-        ...data,
-        id: Date.now().toString(),
-        timestamp: new Date()
+      setIsLoading(true);
+      console.log('📊 Adding health data for user:', user.id);
+      console.log('📋 Health data input:', data);
+      
+      // Prepare health data for database (matching DatabaseService interface)
+      const healthDataForDB = {
+        userId: user.id,
+        timestamp: new Date().toISOString(),
+        symptoms: JSON.stringify(data.symptoms), // Store as JSON string
+        severity: data.severity,
+        sleep: data.behavior.sleep,
+        stress: data.behavior.stress,
+        exercise: data.behavior.exercise,
+        diet: data.behavior.diet,
+        notes: data.notes || ''
       };
 
-      const updatedData = [...healthData, newHealthData];
-      setHealthData(updatedData);
+      console.log('💾 Saving to database with data:', healthDataForDB);
+
+      // Save directly to DatabaseService to avoid data transformation issues
+      const recordId = await databaseService.saveHealthData(healthDataForDB);
       
-      await AsyncStorage.setItem('healthData', JSON.stringify(updatedData));
+      console.log('✅ Health data saved with ID:', recordId);
+      
+      if (recordId) {
+        // Add to local state
+        const newRecord: HealthData = {
+          id: recordId,
+          userId: user.id,
+          timestamp: new Date(),
+          symptoms: data.symptoms,
+          severity: data.severity,
+          behavior: data.behavior,
+          notes: data.notes
+        };
+        
+        setHealthData(prev => {
+          const updated = [...prev, newRecord];
+          console.log('📊 Updated local health data count:', updated.length);
+          return updated;
+        });
+
+        // Refresh data from database to ensure consistency
+        try {
+          console.log('🔄 Refreshing data from database...');
+          await refreshData();
+        } catch (refreshError) {
+          console.warn('⚠️ Data refresh failed:', refreshError);
+          // Continue with local state update if refresh fails
+        }
+
+        // Also trigger ML analysis for immediate feedback
+        try {
+          console.log('🧠 Triggering ML analysis...');
+          await analyzeHealthData(user.id);
+        } catch (mlError) {
+          console.warn('⚠️ ML analysis failed:', mlError);
+          // Don't fail the whole operation if ML analysis fails
+        }
+
+        return true;
+      }
+      
+      console.error('❌ Failed to save health data - no record ID returned');
+      return false;
     } catch (error) {
-      console.error('Error adding health data:', error);
+      console.error('❌ Error adding health data:', error);
+      console.error('Error details:', error instanceof Error ? error.message : String(error));
+      return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -198,117 +228,225 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return healthData.filter(data => data.userId === userId);
   };
 
-  const analyzeHealthData = async (userId: string): Promise<HealthInsight> => {
-    const userData = getHealthData(userId);
-    
-    if (userData.length < 3) {
-      // Not enough data for clustering
-      return {
-        id: Date.now().toString(),
-        userId,
-        timestamp: new Date(),
-        riskLevel: 'low',
-        patterns: ['Insufficient data for analysis'],
-        recommendations: ['Continue logging health data for better insights'],
-        confidence: 0.1
+  const analyzeHealthData = async (userId: string): Promise<HealthInsight | null> => {
+    if (!user || user.id !== userId) {
+      console.warn('⚠️ No user or user ID mismatch for analysis');
+      return null;
+    }
+
+    try {
+      setIsLoading(true);
+      console.log('🧠 Starting health data analysis for user:', userId);
+      
+      // Get user's health data
+      const userHealthData = healthData.filter(data => data.userId === userId);
+      console.log('📊 Found health records for analysis:', userHealthData.length);
+      
+      if (userHealthData.length === 0) {
+        console.log('⚠️ No health data available for analysis');
+        return null;
+      }
+
+      // Use the most recent health record for deployed model assessment
+      const mostRecentData = userHealthData.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      )[0];
+
+      console.log('📋 Most recent health data:', mostRecentData);
+
+      // Convert to ML format
+      const healthDataForML: HealthDataInput = {
+        symptoms: mostRecentData.symptoms,
+        severity: mostRecentData.severity,
+        sleep: mostRecentData.behavior.sleep,
+        stress: mostRecentData.behavior.stress,
+        exercise: mostRecentData.behavior.exercise,
+        diet: mostRecentData.behavior.diet,
+        notes: mostRecentData.notes,
+        timestamp: mostRecentData.timestamp
       };
+
+      console.log('🤖 Sending to ML service:', healthDataForML);
+
+      // Use ML service for analysis (will use deployed model if available)
+      const mlResult = await mlService.analyzeHealthData(userId, [healthDataForML]);
+      
+      console.log('🎯 ML analysis result:', mlResult);
+
+      // Calculate trends from all user data
+      const trendsAnalysis = calculateTrends(userHealthData);
+
+      // Create insight from ML result
+      const insight: HealthInsight = {
+        id: mlResult.id,
+        userId: mlResult.userId,
+        timestamp: mlResult.timestamp,
+        riskLevel: mlResult.riskLevel,
+        patterns: mlResult.patterns,
+        recommendations: mlResult.recommendations,
+        confidence: mlResult.confidence,
+        dataPoints: userHealthData.length,
+        trendsAnalysis
+      };
+      
+      console.log('💡 Generated insight:', insight);
+      
+      // Add to local insights
+      setInsights(prev => {
+        const filtered = prev.filter(i => i.userId !== userId || i.id !== insight.id);
+        const updated = [...filtered, insight];
+        console.log('📊 Updated insights count:', updated.length);
+        return updated;
+      });
+
+      return insight;
+    } catch (error) {
+      console.error('❌ Error analyzing health data:', error);
+      console.error('Error details:', error instanceof Error ? error.message : String(error));
+      return null;
+    } finally {
+      setIsLoading(false);
     }
-
-    // Prepare data for clustering
-    const clusteringData = userData.map(data => [
-      data.severity,
-      data.behavior.sleep,
-      data.behavior.stress,
-      data.behavior.exercise
-    ]);
-
-    // Perform K-means clustering
-    const clusterer = new KMeansClusterer(3);
-    const { assignments, centroids } = clusterer.cluster(clusteringData);
-
-    // Analyze patterns
-    const patterns: string[] = [];
-    const recommendations: string[] = [];
-    let riskLevel: 'low' | 'medium' | 'high' = 'low';
-    let confidence = 0.5;
-
-    // Calculate average severity for each cluster
-    const clusterSeverities = new Array(3).fill(0).map(() => ({ sum: 0, count: 0 }));
-    
-    assignments.forEach((cluster, index) => {
-      clusterSeverities[cluster].sum += userData[index].severity;
-      clusterSeverities[cluster].count += 1;
-    });
-
-    const avgSeverities = clusterSeverities.map(c => c.count > 0 ? c.sum / c.count : 0);
-    const maxSeverity = Math.max(...avgSeverities);
-    const minSeverity = Math.min(...avgSeverities);
-
-    // Determine risk level based on severity patterns
-    if (maxSeverity > 7) {
-      riskLevel = 'high';
-      patterns.push('High severity symptoms detected');
-      recommendations.push('Consider consulting a healthcare provider');
-    } else if (maxSeverity > 4) {
-      riskLevel = 'medium';
-      patterns.push('Moderate severity symptoms observed');
-      recommendations.push('Monitor symptoms closely');
-    } else {
-      riskLevel = 'low';
-      patterns.push('Low severity symptoms');
-      recommendations.push('Continue current health practices');
-    }
-
-    // Analyze sleep patterns
-    const avgSleep = userData.reduce((sum, data) => sum + data.behavior.sleep, 0) / userData.length;
-    if (avgSleep < 6) {
-      patterns.push('Insufficient sleep detected');
-      recommendations.push('Aim for 7-9 hours of sleep per night');
-    }
-
-    // Analyze stress patterns
-    const avgStress = userData.reduce((sum, data) => sum + data.behavior.stress, 0) / userData.length;
-    if (avgStress > 7) {
-      patterns.push('High stress levels detected');
-      recommendations.push('Consider stress management techniques');
-    }
-
-    // Calculate confidence based on data consistency
-    const severityVariance = userData.reduce((sum, data) => {
-      const diff = data.severity - (userData.reduce((s, d) => s + d.severity, 0) / userData.length);
-      return sum + diff * diff;
-    }, 0) / userData.length;
-    
-    confidence = Math.max(0.1, Math.min(0.9, 1 - severityVariance / 25));
-
-    const insight: HealthInsight = {
-      id: Date.now().toString(),
-      userId,
-      timestamp: new Date(),
-      riskLevel,
-      patterns,
-      recommendations,
-      confidence
-    };
-
-    const updatedInsights = [...insights, insight];
-    setInsights(updatedInsights);
-    await AsyncStorage.setItem('healthInsights', JSON.stringify(updatedInsights));
-
-    return insight;
   };
 
   const getInsights = (userId: string): HealthInsight[] => {
     return insights.filter(insight => insight.userId === userId);
   };
 
+  const refreshData = async () => {
+    if (user) {
+      console.log('🔄 Refreshing health data for user:', user.id);
+      await loadHealthData();
+      console.log('✅ Health data refresh completed');
+      console.log('📊 Current health data count in context:', healthData.length);
+      console.log('🧠 Current insights count in context:', insights.length);
+    }
+  };
+
+  // Helper function to calculate trends from health data
+  const calculateTrends = (userHealthData: HealthData[]) => {
+    if (userHealthData.length < 2) {
+      return {
+        severityTrend: 'stable' as const,
+        sleepTrend: 'stable' as const,
+        stressTrend: 'stable' as const,
+        exerciseTrend: 'stable' as const
+      };
+    }
+
+    // Sort by timestamp to get chronological order
+    const sortedData = [...userHealthData].sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    // Get recent half vs older half for trend calculation
+    const midPoint = Math.floor(sortedData.length / 2);
+    const olderData = sortedData.slice(0, midPoint);
+    const recentData = sortedData.slice(midPoint);
+
+    const calculateTrend = (older: number[], recent: number[]) => {
+      const olderAvg = older.reduce((sum, val) => sum + val, 0) / older.length;
+      const recentAvg = recent.reduce((sum, val) => sum + val, 0) / recent.length;
+      const diff = recentAvg - olderAvg;
+      
+      if (Math.abs(diff) < 0.5) return 'stable';
+      return diff > 0 ? 'worsening' : 'improving';
+    };
+
+    return {
+      severityTrend: calculateTrend(
+        olderData.map(d => d.severity),
+        recentData.map(d => d.severity)
+      ) as 'improving' | 'stable' | 'worsening',
+      sleepTrend: calculateTrend(
+        olderData.map(d => d.behavior.sleep),
+        recentData.map(d => d.behavior.sleep)
+      ) as 'improving' | 'stable' | 'worsening',
+      stressTrend: calculateTrend(
+        olderData.map(d => d.behavior.stress),
+        recentData.map(d => d.behavior.stress)
+      ) as 'improving' | 'stable' | 'worsening',
+      exerciseTrend: calculateTrend(
+        olderData.map(d => d.behavior.exercise),
+        recentData.map(d => d.behavior.exercise)
+      ) as 'improving' | 'stable' | 'worsening'
+    };
+  };
+
+  // New deployed model methods
+  const deployModel = async (): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      console.log('🚀 Deploying model from HealthDataContext...');
+      
+      // Import training service
+      const { default: MLTrainingService } = await import('../services/MLTrainingService');
+      const trainingService = new MLTrainingService();
+      
+      // Train a hybrid model with best performance
+      const trainingResult = await trainingService.trainHybridModel();
+      
+      // Deploy the trained model
+      await deploymentService.deployModel(trainingResult);
+      
+      console.log('✅ Model deployed successfully from context');
+      return true;
+      
+    } catch (error) {
+      console.error('❌ Model deployment failed:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getModelInfo = () => {
+    return deploymentService.getDeployedModelInfo();
+  };
+
+  const getPredictionStats = () => {
+    return deploymentService.getPredictionStats();
+  };
+
+  const triggerModelRetraining = async (): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      console.log('🔄 Triggering model retraining from context...');
+      
+      const result = await deploymentService.triggerRetraining();
+      
+      if (result.success) {
+        console.log('✅ Model retrained successfully');
+        // Refresh insights with new model
+        if (user) {
+          await analyzeHealthData(user.id);
+        }
+      }
+      
+      return result.success;
+      
+    } catch (error) {
+      console.error('❌ Model retraining failed:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value: HealthDataContextType = {
     healthData,
     insights,
+    isLoading,
     addHealthData,
     getHealthData,
     analyzeHealthData,
-    getInsights
+    getInsights,
+    refreshData,
+    // New deployed model features
+    deployModel,
+    getModelInfo,
+    getPredictionStats,
+    triggerModelRetraining
   };
 
   return (
@@ -316,4 +454,4 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       {children}
     </HealthDataContext.Provider>
   );
-}; 
+};

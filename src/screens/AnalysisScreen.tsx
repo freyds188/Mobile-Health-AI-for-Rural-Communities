@@ -101,15 +101,19 @@ const AnalysisScreen = () => {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="analytics" size={24} color="#667eea" />
-        <Text style={styles.headerTitle}>Health Analysis</Text>
+        <Ionicons name="document-text" size={32} color="#ffffff" />
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.headerTitle}>📈 Health Reports</Text>
+          <Text style={styles.headerSubtitle}>View your health analysis</Text>
+        </View>
         <TouchableOpacity
           style={styles.analyzeButton}
           onPress={handleRunAnalysis}
           disabled={isAnalyzing}
         >
+          <Ionicons name="refresh" size={20} color="#ffffff" />
           <Text style={styles.analyzeButtonText}>
-            {isAnalyzing ? 'Analyzing...' : 'Run Analysis'}
+            {isAnalyzing ? 'Analyzing...' : 'Update'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -126,8 +130,8 @@ const AnalysisScreen = () => {
         {latestInsight && (
           <View style={styles.card}>
             <View style={styles.cardHeader}>
-              <Ionicons name="bulb" size={24} color="#667eea" />
-              <Text style={styles.cardTitle}>Latest Analysis</Text>
+              <Ionicons name="medical" size={28} color="#2E7D32" />
+              <Text style={styles.cardTitle}>Your Health Analysis</Text>
             </View>
             
             <View style={styles.riskSection}>
@@ -171,7 +175,10 @@ const AnalysisScreen = () => {
 
         {/* Health Data Summary */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Health Data Summary</Text>
+          <View style={styles.cardHeader}>
+            <Ionicons name="stats-chart" size={28} color="#2E7D32" />
+            <Text style={styles.cardTitle}>Your Health Summary</Text>
+          </View>
           {averages ? (
             <View style={styles.summaryGrid}>
               <View style={styles.summaryItem}>
@@ -215,7 +222,10 @@ const AnalysisScreen = () => {
 
         {/* Recent Health Data */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Recent Health Entries</Text>
+          <View style={styles.cardHeader}>
+            <Ionicons name="list" size={28} color="#2E7D32" />
+            <Text style={styles.cardTitle}>Recent Health Entries</Text>
+          </View>
           {healthData.length > 0 ? (
             healthData.slice(-5).reverse().map((data, index) => (
               <View key={index} style={styles.dataItem}>
@@ -249,38 +259,49 @@ const AnalysisScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f0f8f0',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingHorizontal: 25,
+    paddingVertical: 25,
+    backgroundColor: '#2E7D32',
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
+  },
+  headerTextContainer: {
+    flex: 1,
+    marginLeft: 15,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: '#333',
-    marginLeft: 10,
+    color: '#ffffff',
+    marginBottom: 3,
+  },
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#c8e6c9',
   },
   analyzeButton: {
-    backgroundColor: '#667eea',
-    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 12,
     paddingHorizontal: 15,
-    paddingVertical: 8,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   analyzeButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 5,
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: 25,
   },
   loadingContainer: {
     alignItems: 'center',
@@ -292,28 +313,30 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   card: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
-    marginBottom: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 25,
+    marginBottom: 25,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: '#e8f5e8',
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 20,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#2E7D32',
     marginLeft: 10,
   },
   riskSection: {

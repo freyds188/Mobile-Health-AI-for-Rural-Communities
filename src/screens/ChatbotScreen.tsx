@@ -85,11 +85,14 @@ const ChatbotScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Ionicons name="chatbubbles" size={24} color="#667eea" />
-          <Text style={styles.headerTitle}>Health AI Assistant</Text>
+          <Ionicons name="medical" size={32} color="#ffffff" />
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>🤖 AI Health Assistant</Text>
+            <Text style={styles.headerSubtitle}>Ask me about your health</Text>
+          </View>
         </View>
         <TouchableOpacity onPress={handleClearChat} style={styles.clearButton}>
-          <Ionicons name="trash-outline" size={20} color="#666" />
+          <Ionicons name="refresh" size={24} color="#ffffff" />
         </TouchableOpacity>
       </View>
 
@@ -113,10 +116,11 @@ const ChatbotScreen = () => {
             style={styles.textInput}
             value={inputText}
             onChangeText={setInputText}
-            placeholder="Type your symptoms or health concerns..."
+            placeholder="Tell me about your symptoms, pain, or health questions..."
             multiline
             maxLength={500}
             onSubmitEditing={handleSend}
+            placeholderTextColor="#999"
           />
           <TouchableOpacity
             style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
@@ -138,31 +142,43 @@ const ChatbotScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f0f8f0',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+    paddingHorizontal: 25,
+    paddingVertical: 25,
     backgroundColor: '#2E7D32',
+    borderBottomLeftRadius: 25,
+    borderBottomRightRadius: 25,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  headerTextContainer: {
+    marginLeft: 15,
+    flex: 1,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: 'bold',
-    color: 'white',
-    marginLeft: 12,
+    color: '#ffffff',
+    marginBottom: 3,
     fontFamily: fontFamily.headingMedium,
   },
+  headerSubtitle: {
+    fontSize: 16,
+    color: '#c8e6c9',
+    fontFamily: fontFamily.body,
+  },
   clearButton: {
-    padding: 10,
+    padding: 12,
     backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 8,
+    borderRadius: 12,
   },
   keyboardView: {
     flex: 1,
@@ -206,8 +222,8 @@ const styles = StyleSheet.create({
     borderColor: '#e8f5e8',
   },
   messageText: {
-    fontSize: 18,
-    lineHeight: 24,
+    fontSize: 20,
+    lineHeight: 28,
     fontFamily: fontFamily.body,
   },
   userText: {
@@ -237,40 +253,52 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    paddingHorizontal: 25,
+    paddingVertical: 25,
+    backgroundColor: '#ffffff',
+    borderTopWidth: 3,
+    borderTopColor: '#e8f5e8',
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   textInput: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#ffffff',
     borderRadius: 25,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
     maxHeight: 120,
-    fontSize: 18,
-    marginRight: 12,
-    borderWidth: 2,
-    borderColor: '#e0e0e0',
+    fontSize: 20,
+    marginRight: 15,
+    borderWidth: 3,
+    borderColor: '#2E7D32',
     fontFamily: fontFamily.body,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sendButton: {
     backgroundColor: '#2E7D32',
-    borderRadius: 25,
-    width: 50,
-    height: 50,
+    borderRadius: 30,
+    width: 60,
+    height: 60,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 3,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
   },
   sendButtonDisabled: {
     backgroundColor: '#e0e0e0',

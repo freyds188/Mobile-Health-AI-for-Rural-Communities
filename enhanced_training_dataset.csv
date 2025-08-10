@@ -1,0 +1,101 @@
+id,userId,timestamp,symptoms,severity,sleep,stress,exercise,diet,notes,age,gender,location,medical_history,time_of_day,day_of_week,season
+1,user101,2024-01-11T06:30:00Z,"[""headache"",""fatigue""]",6,7.5,4,30,balanced,"Early morning headache",45,female,rural_area,"hypertension",morning,thursday,winter
+2,user102,2024-01-11T14:20:00Z,"[""cough"",""fever""]",8,5.0,7,0,balanced,"Persistent afternoon cough",32,male,rural_area,"asthma",afternoon,thursday,winter
+3,user103,2024-01-11T22:45:00Z,"[""nausea"",""dizziness""]",5,8.0,3,45,vegetarian,"Evening nausea after dinner",28,female,rural_area,"none",evening,thursday,winter
+4,user104,2024-01-12T05:15:00Z,"[""back pain"",""muscle weakness""]",7,6.5,6,15,balanced,"Pre-dawn back pain from farm work",55,male,rural_area,"diabetes",early_morning,friday,winter
+5,user105,2024-01-12T18:30:00Z,"[""chest pain""]",9,4.0,9,0,low-carb,"Evening chest pain emergency",67,male,rural_area,"heart_disease",evening,friday,winter
+6,user106,2024-01-13T12:00:00Z,"[""abdominal pain"",""nausea""]",6,7.0,5,20,balanced,"Midday stomach pain",41,female,rural_area,"gastritis",noon,saturday,winter
+7,user107,2024-01-13T07:45:00Z,"[""joint pain"",""fatigue""]",5,8.5,2,60,high-protein,"Morning joint stiffness",38,male,rural_area,"arthritis",morning,saturday,winter
+8,user108,2024-01-14T16:20:00Z,"[""headache"",""dizziness""]",4,9.0,1,90,vegan,"Late afternoon headache",25,female,rural_area,"none",late_afternoon,sunday,winter
+9,user109,2024-01-14T08:10:00Z,"[""shortness of breath"",""fatigue""]",8,5.5,8,5,balanced,"Morning breathing difficulty",52,male,rural_area,"copd",morning,sunday,winter
+10,user110,2024-01-15T19:30:00Z,"[""fever"",""cough"",""fatigue""]",7,6.0,6,10,balanced,"Evening flu symptoms",35,female,rural_area,"none",evening,monday,winter
+11,user111,2024-02-01T06:00:00Z,"[""headache""]",3,8.0,2,45,balanced,"Early morning headache",29,male,rural_area,"none",early_morning,thursday,winter
+12,user112,2024-02-01T13:45:00Z,"[""nausea"",""vomiting""]",6,5.0,7,0,balanced,"Afternoon food poisoning",43,female,rural_area,"gastritis",afternoon,thursday,winter
+13,user113,2024-02-01T21:15:00Z,"[""muscle weakness"",""fatigue""]",5,7.5,4,25,vegetarian,"Evening weakness",31,male,rural_area,"anemia",evening,thursday,winter
+14,user114,2024-02-02T09:30:00Z,"[""back pain""]",4,8.5,2,50,balanced,"Mid-morning back pain",27,female,rural_area,"none",mid_morning,friday,winter
+15,user115,2024-02-02T20:00:00Z,"[""chest pain"",""shortness of breath""]",9,3.5,9,0,low-carb,"Night chest emergency",71,male,rural_area,"heart_disease",night,friday,winter
+16,user116,2024-03-15T11:30:00Z,"[""allergic reaction"",""shortness of breath""]",7,6.0,6,20,balanced,"Spring allergy flare-up",34,female,rural_area,"allergies",late_morning,friday,spring
+17,user117,2024-03-15T17:45:00Z,"[""headache"",""fatigue""]",5,7.5,4,35,high-protein,"Pollen headache",28,male,rural_area,"allergies",late_afternoon,friday,spring
+18,user118,2024-03-16T08:20:00Z,"[""runny nose"",""sneezing""]",3,8.0,2,60,vegan,"Mild spring allergies",31,female,rural_area,"seasonal_allergies",morning,saturday,spring
+19,user119,2024-06-20T14:30:00Z,"[""heat exhaustion"",""dizziness""]",8,5.0,8,30,balanced,"Heat stroke symptoms",45,male,rural_area,"none",afternoon,tuesday,summer
+20,user120,2024-06-20T16:15:00Z,"[""dehydration"",""fatigue""]",6,6.5,6,0,balanced,"Summer heat fatigue",52,female,rural_area,"none",late_afternoon,tuesday,summer
+21,user121,2024-09-10T07:00:00Z,"[""seasonal depression"",""fatigue""]",6,9.0,7,15,balanced,"Fall seasonal mood changes",38,female,rural_area,"depression",morning,sunday,autumn
+22,user122,2024-09-10T19:30:00Z,"[""joint pain"",""stiffness""]",5,7.0,5,25,balanced,"Weather-related arthritis",62,male,rural_area,"arthritis",evening,sunday,autumn
+23,user123,2024-12-05T06:15:00Z,"[""cold symptoms"",""cough""]",4,8.0,3,40,balanced,"Winter cold onset",29,female,rural_area,"none",early_morning,tuesday,winter
+24,user124,2024-12-05T15:45:00Z,"[""vitamin D deficiency"",""fatigue""]",5,6.0,5,20,vegetarian,"Winter vitamin deficiency",41,male,rural_area,"vitamin_d_deficiency",afternoon,tuesday,winter
+25,user125,2024-01-16T10:45:00Z,"[""anxiety"",""chest tightness""]",6,6.5,8,25,balanced,"Anxiety-induced chest symptoms",33,female,rural_area,"anxiety_disorder",late_morning,tuesday,winter
+26,user126,2024-01-16T23:00:00Z,"[""insomnia"",""restlessness""]",4,3.0,9,10,low-carb,"Sleep disorder symptoms",46,male,rural_area,"insomnia",night,tuesday,winter
+27,user127,2024-01-17T05:30:00Z,"[""hypertension"",""headache""]",7,5.5,7,0,balanced,"High blood pressure symptoms",59,female,rural_area,"hypertension",early_morning,wednesday,winter
+28,user128,2024-01-17T17:20:00Z,"[""diabetes"",""fatigue""]",5,7.0,4,35,diabetic,"Blood sugar related fatigue",54,male,rural_area,"type_2_diabetes",late_afternoon,wednesday,winter
+29,user129,2024-01-18T12:30:00Z,"[""pregnancy"",""nausea""]",6,7.5,5,30,balanced,"Morning sickness",26,female,rural_area,"pregnancy",noon,thursday,winter
+30,user130,2024-01-18T20:45:00Z,"[""menopause"",""hot flashes""]",5,6.0,6,20,balanced,"Menopausal symptoms",51,female,rural_area,"menopause",evening,thursday,winter
+31,user131,2024-01-19T08:00:00Z,"[""osteoporosis"",""back pain""]",6,6.5,5,15,high-calcium,"Bone density related pain",68,female,rural_area,"osteoporosis",morning,friday,winter
+32,user132,2024-01-19T14:15:00Z,"[""kidney stones"",""abdominal pain""]",8,4.0,8,0,low-sodium,"Severe kidney stone pain",42,male,rural_area,"kidney_stones",afternoon,friday,winter
+33,user133,2024-01-20T11:00:00Z,"[""thyroid disorder"",""fatigue""]",5,8.0,4,40,balanced,"Hypothyroid symptoms",37,female,rural_area,"hypothyroidism",late_morning,saturday,winter
+34,user134,2024-01-20T16:30:00Z,"[""gout"",""joint pain""]",7,5.0,7,5,low-purine,"Gout flare in toe",63,male,rural_area,"gout",late_afternoon,saturday,winter
+35,user135,2024-01-21T09:45:00Z,"[""ulcer"",""stomach pain""]",6,6.5,6,25,bland,"Peptic ulcer pain",48,female,rural_area,"peptic_ulcer",mid_morning,sunday,winter
+36,user136,2024-01-21T22:15:00Z,"[""sleep apnea"",""fatigue""]",5,4.5,5,10,balanced,"Sleep disorder fatigue",55,male,rural_area,"sleep_apnea",night,sunday,winter
+37,user137,2024-01-22T07:30:00Z,"[""migraine"",""nausea""]",8,5.5,8,0,migraine-friendly,"Severe migraine attack",39,female,rural_area,"chronic_migraine",morning,monday,winter
+38,user138,2024-01-22T13:00:00Z,"[""copd"",""shortness of breath""]",7,6.0,6,15,balanced,"COPD exacerbation",67,male,rural_area,"copd",afternoon,monday,winter
+39,user139,2024-01-23T18:45:00Z,"[""stroke recovery"",""weakness""]",6,7.0,5,30,heart-healthy,"Post-stroke symptoms",71,female,rural_area,"stroke",evening,tuesday,winter
+40,user140,2024-01-23T10:20:00Z,"[""cancer treatment"",""fatigue""]",7,5.0,7,5,nutritious,"Chemotherapy side effects",56,male,rural_area,"cancer",late_morning,tuesday,winter
+41,user141,2024-01-24T15:10:00Z,"[""autoimmune"",""joint pain""]",6,6.5,6,20,anti-inflammatory,"Autoimmune flare",44,female,rural_area,"lupus",afternoon,wednesday,winter
+42,user142,2024-01-24T21:30:00Z,"[""mental health"",""depression""]",5,8.0,7,25,balanced,"Depression episode",32,male,rural_area,"major_depression",evening,wednesday,winter
+43,user143,2024-01-25T06:45:00Z,"[""chronic pain"",""muscle pain""]",7,4.0,8,10,balanced,"Fibromyalgia pain",49,female,rural_area,"fibromyalgia",morning,thursday,winter
+44,user144,2024-01-25T12:15:00Z,"[""digestive disorder"",""bloating""]",4,7.5,4,35,low-fodmap,"IBS symptoms",36,male,rural_area,"ibs",noon,thursday,winter
+45,user145,2024-01-26T19:00:00Z,"[""liver disease"",""fatigue""]",6,6.0,6,15,liver-friendly,"Hepatitis symptoms",58,female,rural_area,"hepatitis",evening,friday,winter
+46,user146,2024-01-26T08:30:00Z,"[""epilepsy"",""confusion""]",5,7.0,5,30,balanced,"Post-seizure symptoms",27,male,rural_area,"epilepsy",morning,friday,winter
+47,user147,2024-01-27T14:45:00Z,"[""multiple sclerosis"",""weakness""]",6,5.5,6,20,balanced,"MS exacerbation",43,female,rural_area,"multiple_sclerosis",afternoon,saturday,winter
+48,user148,2024-01-27T20:20:00Z,"[""parkinson disease"",""tremor""]",5,6.5,5,25,balanced,"Parkinson's symptoms",69,male,rural_area,"parkinsons",evening,saturday,winter
+49,user149,2024-01-28T11:30:00Z,"[""alzheimer disease"",""confusion""]",4,8.0,4,40,brain-healthy,"Early dementia signs",72,female,rural_area,"alzheimers",late_morning,sunday,winter
+50,user150,2024-01-28T17:50:00Z,"[""addiction recovery"",""anxiety""]",5,7.5,7,35,balanced,"Recovery-related anxiety",34,male,rural_area,"substance_abuse",late_afternoon,sunday,winter
+51,user151,2024-02-15T06:20:00Z,"[""seasonal allergies"",""congestion""]",4,8.0,3,45,balanced,"Early spring allergies",29,female,rural_area,"allergies",morning,thursday,spring
+52,user152,2024-05-10T12:40:00Z,"[""heat rash"",""itching""]",3,7.0,2,50,balanced,"Summer heat rash",25,male,rural_area,"none",noon,friday,spring
+53,user153,2024-07-20T15:15:00Z,"[""sunburn"",""skin pain""]",5,6.5,4,30,balanced,"Severe sunburn",31,female,rural_area,"none",afternoon,saturday,summer
+54,user154,2024-08-05T18:30:00Z,"[""dehydration"",""dizziness""]",6,5.0,6,0,balanced,"Heat-related dehydration",47,male,rural_area,"none",evening,monday,summer
+55,user155,2024-10-12T09:15:00Z,"[""seasonal affective disorder"",""depression""]",5,9.0,6,20,balanced,"Fall depression onset",38,female,rural_area,"sad",morning,saturday,autumn
+56,user156,2024-11-25T16:45:00Z,"[""cold weather arthritis"",""joint pain""]",6,6.0,5,15,balanced,"Weather-related joint pain",64,male,rural_area,"arthritis",late_afternoon,monday,autumn
+57,user157,2024-12-15T07:00:00Z,"[""winter blues"",""fatigue""]",4,8.5,4,25,balanced,"Winter mood changes",33,female,rural_area,"none",morning,sunday,winter
+58,user158,2024-12-30T20:10:00Z,"[""holiday stress"",""anxiety""]",5,6.5,7,10,balanced,"End-of-year stress",41,male,rural_area,"anxiety",evening,monday,winter
+59,user159,2024-01-05T10:25:00Z,"[""post-holiday depression"",""sadness""]",4,7.5,5,35,balanced,"Post-holiday mood drop",36,female,rural_area,"none",late_morning,friday,winter
+60,user160,2024-01-29T13:30:00Z,"[""work stress"",""headache""]",6,6.0,8,20,balanced,"Job-related stress headache",42,male,rural_area,"none",afternoon,tuesday,winter
+61,user161,2024-01-30T08:45:00Z,"[""family stress"",""anxiety""]",5,7.0,7,30,balanced,"Family-related anxiety",39,female,rural_area,"anxiety",morning,wednesday,winter
+62,user162,2024-01-31T19:20:00Z,"[""financial stress"",""insomnia""]",6,4.0,9,5,balanced,"Money worries affecting sleep",44,male,rural_area,"none",evening,thursday,winter
+63,user163,2024-02-01T11:50:00Z,"[""relationship stress"",""depression""]",5,6.5,6,25,balanced,"Relationship problems",28,female,rural_area,"none",late_morning,friday,winter
+64,user164,2024-02-02T15:35:00Z,"[""caregiving stress"",""fatigue""]",6,5.5,7,15,balanced,"Caring for elderly parent",52,male,rural_area,"none",afternoon,saturday,winter
+65,user165,2024-02-03T21:45:00Z,"[""isolation"",""loneliness""]",4,8.0,5,40,balanced,"Rural isolation feelings",35,female,rural_area,"none",evening,sunday,winter
+66,user166,2024-02-04T06:30:00Z,"[""transportation issues"",""stress""]",5,7.5,6,20,balanced,"Can't get to medical appointments",61,male,rural_area,"none",morning,monday,winter
+67,user167,2024-02-05T14:00:00Z,"[""internet connectivity"",""frustration""]",3,8.5,4,50,balanced,"Poor internet for telehealth",29,female,rural_area,"none",afternoon,tuesday,winter
+68,user168,2024-02-06T17:15:00Z,"[""medication access"",""anxiety""]",5,6.0,7,10,balanced,"Pharmacy too far away",48,male,rural_area,"diabetes",late_afternoon,wednesday,winter
+69,user169,2024-02-07T09:40:00Z,"[""specialist access"",""worry""]",4,7.0,5,35,balanced,"No specialists in rural area",56,female,rural_area,"heart_disease",mid_morning,thursday,winter
+70,user170,2024-02-08T22:00:00Z,"[""emergency services"",""fear""]",6,5.0,8,0,balanced,"Worried about emergency response time",67,male,rural_area,"copd",night,friday,winter
+71,user171,2024-02-09T12:20:00Z,"[""agricultural injury"",""back pain""]",7,4.5,7,5,balanced,"Farm equipment injury",45,male,rural_area,"none",noon,saturday,winter
+72,user172,2024-02-10T18:55:00Z,"[""pesticide exposure"",""nausea""]",6,6.5,6,20,balanced,"Chemical exposure symptoms",38,female,rural_area,"none",evening,sunday,winter
+73,user173,2024-02-11T07:25:00Z,"[""animal injury"",""wound""]",5,7.5,4,25,balanced,"Livestock-related injury",51,male,rural_area,"none",morning,monday,winter
+74,user174,2024-02-12T16:10:00Z,"[""weather exposure"",""hypothermia""]",8,3.0,9,0,balanced,"Extreme cold exposure",62,female,rural_area,"none",late_afternoon,tuesday,winter
+75,user175,2024-02-13T10:05:00Z,"[""power outage"",""stress""]",4,8.0,6,30,balanced,"Medical equipment needs power",59,male,rural_area,"sleep_apnea",late_morning,wednesday,winter
+76,user176,2024-04-01T08:15:00Z,"[""spring allergies"",""rhinitis""]",5,7.0,4,40,balanced,"Pollen season onset",33,female,rural_area,"allergies",morning,monday,spring
+77,user177,2024-04-15T13:45:00Z,"[""farm work injury"",""muscle strain""]",6,6.0,5,15,balanced,"Planting season injury",42,male,rural_area,"none",afternoon,monday,spring
+78,user178,2024-05-20T19:30:00Z,"[""tick bite"",""fever""]",7,5.5,7,10,balanced,"Possible Lyme disease",36,female,rural_area,"none",evening,monday,spring
+79,user179,2024-06-10T14:20:00Z,"[""heat stroke"",""confusion""]",9,2.0,10,0,balanced,"Severe heat emergency",58,male,rural_area,"none",afternoon,monday,summer
+80,user180,2024-07-04T16:50:00Z,"[""sunstroke"",""headache""]",8,4.0,8,5,balanced,"Fourth of July heat exposure",27,female,rural_area,"none",late_afternoon,thursday,summer
+81,user181,2024-08-15T11:35:00Z,"[""harvest injury"",""cuts""]",5,7.5,4,35,balanced,"Farm equipment cuts",49,male,rural_area,"none",late_morning,thursday,summer
+82,user182,2024-09-05T20:15:00Z,"[""bee sting allergy"",""swelling""]",6,6.5,6,20,balanced,"Severe allergic reaction",31,female,rural_area,"bee_allergy",evening,thursday,autumn
+83,user183,2024-10-01T09:00:00Z,"[""hunting accident"",""trauma""]",8,3.5,9,0,balanced,"Accidental gunshot wound",44,male,rural_area,"none",morning,tuesday,autumn
+84,user184,2024-11-15T15:25:00Z,"[""carbon monoxide"",""poisoning""]",7,5.0,8,10,balanced,"Faulty heating system",53,female,rural_area,"none",afternoon,friday,autumn
+85,user185,2024-12-20T22:40:00Z,"[""ice injury"",""fracture""]",8,4.0,8,0,balanced,"Slipped on ice",39,male,rural_area,"none",night,friday,winter
+86,user186,2024-01-15T05:45:00Z,"[""frostbite"",""numbness""]",7,6.0,7,15,balanced,"Extreme cold exposure",46,female,rural_area,"none",early_morning,wednesday,winter
+87,user187,2024-02-28T12:10:00Z,"[""cabin fever"",""irritability""]",4,8.0,5,25,balanced,"Winter isolation stress",32,male,rural_area,"none",noon,friday,winter
+88,user188,2024-03-10T17:30:00Z,"[""mud season"",""depression""]",5,7.0,6,30,balanced,"Spring depression and isolation",41,female,rural_area,"depression",late_afternoon,sunday,spring
+89,user189,2024-04-25T08:50:00Z,"[""allergy medication"",""drowsiness""]",3,9.0,2,45,balanced,"Antihistamine side effects",29,male,rural_area,"allergies",morning,thursday,spring
+90,user190,2024-05-30T14:40:00Z,"[""gardening injury"",""back strain""]",5,6.5,4,20,balanced,"Planting garden back injury",37,female,rural_area,"none",afternoon,thursday,spring
+91,user191,2024-06-25T18:05:00Z,"[""swimming accident"",""near drowning""]",9,2.5,10,0,balanced,"Pond swimming emergency",22,male,rural_area,"none",evening,tuesday,summer
+92,user192,2024-07-15T13:20:00Z,"[""fireworks injury"",""burns""]",6,5.5,6,5,balanced,"Fourth of July burns",28,female,rural_area,"none",afternoon,monday,summer
+93,user193,2024-08-30T10:15:00Z,"[""school stress"",""anxiety""]",4,7.5,5,35,balanced,"Rural school transport issues",16,male,rural_area,"none",late_morning,friday,summer
+94,user194,2024-09-20T16:45:00Z,"[""harvest stress"",""fatigue""]",5,6.0,6,25,balanced,"Long harvest days",48,female,rural_area,"none",late_afternoon,friday,autumn
+95,user195,2024-10-31T21:00:00Z,"[""seasonal change"",""mood disorder""]",5,7.0,5,30,balanced,"Halloween seasonal change",34,male,rural_area,"bipolar",evening,thursday,autumn
+96,user196,2024-11-30T07:15:00Z,"[""holiday preparation"",""stress""]",4,8.0,6,40,balanced,"Thanksgiving preparation stress",43,female,rural_area,"none",morning,saturday,autumn
+97,user197,2024-12-25T23:30:00Z,"[""holiday loneliness"",""sadness""]",6,5.0,7,10,balanced,"Christmas loneliness",58,male,rural_area,"none",night,wednesday,winter
+98,user198,2024-01-01T00:15:00Z,"[""new year anxiety"",""worry""]",5,6.5,6,15,balanced,"New Year's resolutions anxiety",35,female,rural_area,"anxiety",midnight,wednesday,winter
+99,user199,2024-02-14T19:45:00Z,"[""valentine stress"",""depression""]",4,7.5,5,25,balanced,"Valentine's Day loneliness",26,male,rural_area,"none",evening,friday,winter
+100,user200,2024-03-17T14:30:00Z,"[""spring fever"",""restlessness""]",3,8.5,3,50,balanced,"Spring energy burst",31,female,rural_area,"none",afternoon,sunday,spring
