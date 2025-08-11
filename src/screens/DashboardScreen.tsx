@@ -317,6 +317,25 @@ const DashboardScreen = () => {
     );
   };
 
+  const handleSymptomAnalysis = () => {
+    console.log('🎯 Navigating to Symptom Analysis screen from Quick Actions');
+    
+    // Add haptic feedback for better user experience
+    Vibration.vibrate(50);
+    
+    try {
+      navigation.navigate('Symptom Analysis' as never);
+      console.log('✅ Successfully navigated to Symptom Analysis screen');
+    } catch (error) {
+      console.error('❌ Navigation to Symptom Analysis failed:', error);
+      Alert.alert(
+        'Navigation Error', 
+        'Could not open symptom analysis. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
   if (!user) {
     return (
       <SafeAreaView style={styles.container}>
@@ -386,25 +405,25 @@ const DashboardScreen = () => {
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.actionButton}
+                onPress={handleSymptomAnalysis}
+                activeOpacity={0.7}
+              >
+                <View style={styles.actionIconContainer}>
+                  <Ionicons name="medical" size={32} color="#2E7D32" />
+                </View>
+                <Text style={styles.actionText}>Symptom Analysis</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.actionButtonsRow}>
+              <TouchableOpacity 
+                style={styles.actionButton}
                 onPress={handleAskAI}
                 activeOpacity={0.7}
               >
                 <View style={styles.actionIconContainer}>
                   <Ionicons name="chatbubbles" size={32} color="#2E7D32" />
                 </View>
-                <Text style={styles.actionText}>Ask AI Doctor</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.actionButtonsRow}>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={handleRiskAssessment}
-                activeOpacity={0.7}
-              >
-                <View style={styles.actionIconContainer}>
-                  <Ionicons name="analytics" size={32} color="#2E7D32" />
-                </View>
-                <Text style={styles.actionText}>Risk Assessment</Text>
+                <Text style={styles.actionText}>Ask AI</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.actionButton, styles.emergencyButton]}
@@ -965,6 +984,26 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#2E7D32',
+  },
+  symptomAnalysisButton: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  symptomAnalysisButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '700',
+    marginLeft: 12,
   },
 });
 

@@ -8,16 +8,19 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
-  Dimensions
+  Dimensions,
+  Vibration
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { riskAssessmentService, RiskAssessment, SymptomPattern } from '../services/RiskAssessmentService';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
 const RiskAssessmentScreen = () => {
   const { user } = useAuth();
+  const navigation = useNavigation();
   const [assessment, setAssessment] = useState<RiskAssessment | null>(null);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,6 +65,12 @@ const RiskAssessmentScreen = () => {
     setRefreshing(true);
     await performRiskAssessment();
     setRefreshing(false);
+  };
+
+  const handleSymptomAnalysis = () => {
+    console.log('🎯 Navigating to Symptom Analysis from Risk Assessment');
+    Vibration.vibrate(50);
+    navigation.navigate('Symptom Analysis' as never);
   };
 
   const getRiskLevelColor = (riskLevel: string) => {
@@ -161,233 +170,157 @@ const RiskAssessmentScreen = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Ionicons name="analytics" size={32} color="#007AFF" />
-          <Text style={styles.headerTitle}>Risk Assessment</Text>
-          <Text style={styles.headerSubtitle}>
-            {formatDate(assessment.timestamp)}
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <Ionicons name="analytics" size={32} color="#007AFF" />
+            <Text style={styles.headerTitle}>Risk Assessment</Text>
+            <Text style={styles.headerSubtitle}>
+              {formatDate(assessment.timestamp)}
+            </Text>
+            
+            {/* Symptom Analysis Button */}
+            <TouchableOpacity
+              style={styles.symptomAnalysisButton}
+              onPress={handleSymptomAnalysis}
+            >
+              <Ionicons name="medical" size={24} color="white" />
+              <Text style={styles.symptomAnalysisButtonText}>
+                Analyze Current Symptoms
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Lifestyle Factors */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Lifestyle Assessment</Text>
+          <View style={styles.lifestyleCard}>
+            <View style={styles.lifestyleMetric}>
+              <Text style={styles.lifestyleLabel}>Sleep Quality</Text>
+              <View style={styles.lifestyleBar}>
+                <View 
+                  style={[
+                    styles.lifestyleBarFill,
+                    { width: `${(assessment.lifestyleFactors.sleepQuality / 10) * 100}%` }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.sleepQuality.toFixed(1)}/10</Text>
+            </View>
+            <View style={styles.lifestyleMetric}>
+              <Text style={styles.lifestyleLabel}>Stress Level</Text>
+              <View style={styles.lifestyleBar}>
+                <View 
+                  style={[
+                    styles.lifestyleBarFill,
+                    { width: `${(assessment.lifestyleFactors.stressLevel / 10) * 100}%` }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.stressLevel.toFixed(1)}/10</Text>
+            </View>
+            <View style={styles.lifestyleMetric}>
+              <Text style={styles.lifestyleLabel}>Exercise Level</Text>
+              <View style={styles.lifestyleBar}>
+                <View 
+                  style={[
+                    styles.lifestyleBarFill,
+                    { width: `${(assessment.lifestyleFactors.exerciseLevel / 10) * 100}%` }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.exerciseLevel.toFixed(1)}/10</Text>
+            </View>
+            <View style={styles.lifestyleMetric}>
+              <Text style={styles.lifestyleLabel}>Diet Quality</Text>
+              <View style={styles.lifestyleBar}>
+                <View 
+                  style={[
+                    styles.lifestyleBarFill,
+                    { width: `${(assessment.lifestyleFactors.dietQuality / 10) * 100}%` }
+                  ]} 
+                />
+              </View>
+              <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.dietQuality.toFixed(1)}/10</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Trends */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Health Trends</Text>
+          <View style={styles.trendsCard}>
+            <View style={styles.trendItem}>
+              <Text style={styles.trendLabel}>Symptom Frequency</Text>
+              <Text style={[
+                styles.trendValue,
+                { color: assessment.trends.symptomFrequency === 'increasing' ? '#FF4444' : 
+                         assessment.trends.symptomFrequency === 'decreasing' ? '#00AA00' : '#666666' }
+              ]}>
+                {assessment.trends.symptomFrequency}
+              </Text>
+            </View>
+            <View style={styles.trendItem}>
+              <Text style={styles.trendLabel}>Severity Trend</Text>
+              <Text style={[
+                styles.trendValue,
+                { color: assessment.trends.severityTrend === 'increasing' ? '#FF4444' : 
+                         assessment.trends.severityTrend === 'decreasing' ? '#00AA00' : '#666666' }
+              ]}>
+                {assessment.trends.severityTrend}
+              </Text>
+            </View>
+            <View style={styles.trendItem}>
+              <Text style={styles.trendLabel}>Risk Progression</Text>
+              <Text style={[
+                styles.trendValue,
+                { color: assessment.trends.riskProgression === 'worsening' ? '#FF4444' : 
+                         assessment.trends.riskProgression === 'improving' ? '#00AA00' : '#666666' }
+              ]}>
+                {assessment.trends.riskProgression}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Recommendations */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recommendations</Text>
+          <View style={styles.recommendationsCard}>
+            {assessment.recommendations.map((recommendation, index) => (
+              <View key={index} style={styles.recommendationItem}>
+                <Ionicons name="checkmark-circle" size={20} color="#00AA00" />
+                <Text style={styles.recommendationItemText}>{recommendation}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Next Assessment */}
+        <View style={styles.section}>
+          <View style={styles.nextAssessmentCard}>
+            <Ionicons name="calendar" size={24} color="#007AFF" />
+            <View style={styles.nextAssessmentContent}>
+              <Text style={styles.nextAssessmentTitle}>Next Assessment</Text>
+              <Text style={styles.nextAssessmentDate}>
+                {formatDate(assessment.nextAssessmentDate)}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Disclaimer */}
+        <View style={styles.disclaimer}>
+          <Text style={styles.disclaimerText}>
+            ⚠️ This assessment is for informational purposes only and should not replace professional medical advice. 
+            Always consult with a healthcare provider for proper diagnosis and treatment.
+            {'\n\n'}This tool analyzes patterns in your health data to provide general insights and recommendations. 
+            It is not a diagnostic tool and cannot predict or diagnose medical conditions.
           </Text>
         </View>
-      </View>
-
-
-      {/* Potential Conditions */}
-      {assessment.potentialConditions.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Potential Conditions</Text>
-          {assessment.potentialConditions.map((condition, index) => (
-            <View key={index} style={styles.conditionCard}>
-              <View style={styles.conditionHeader}>
-                <Text style={styles.conditionName}>{condition.condition}</Text>
-                <View style={[
-                  styles.urgencyBadge,
-                  { backgroundColor: getUrgencyColor(condition.urgency) }
-                ]}>
-                  <Text style={styles.urgencyText}>{condition.urgency.toUpperCase()}</Text>
-                </View>
-              </View>
-              <View style={styles.conditionDetails}>
-                <View style={styles.riskIndicator}>
-                  <View style={styles.riskLabel}>
-                    <Text style={styles.riskText}>Risk Level</Text>
-                    <Text style={styles.riskValue}>{getRiskLevelText(condition.probability)}</Text>
-                  </View>
-                  <View style={styles.riskBarContainer}>
-                    <View 
-                      style={[
-                        styles.riskBarFill,
-                        { width: `${condition.probability * 100}%` }
-                      ]} 
-                    />
-                  </View>
-                </View>
-                <Text style={styles.severityText}>
-                  Severity: <Text style={styles.severityValue}>{condition.severity}</Text>
-                </Text>
-              </View>
-              {condition.recommendations.length > 0 && (
-                <View style={styles.recommendationsContainer}>
-                  <Text style={styles.recommendationsTitle}>Recommendations:</Text>
-                  {condition.recommendations.map((rec, recIndex) => (
-                    <Text key={recIndex} style={styles.recommendationText}>• {rec}</Text>
-                  ))}
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Symptom Patterns */}
-      {assessment.symptomPatterns.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Symptom Patterns</Text>
-          {assessment.symptomPatterns.slice(0, 5).map((pattern, index) => (
-            <View key={index} style={styles.patternCard}>
-              <View style={styles.patternHeader}>
-                <Text style={styles.patternTitle}>Pattern {index + 1}</Text>
-                <View style={[
-                  styles.riskBadge,
-                  { backgroundColor: getRiskLevelColor(pattern.riskLevel) }
-                ]}>
-                  <Text style={styles.riskBadgeText}>{pattern.riskLevel.toUpperCase()}</Text>
-                </View>
-              </View>
-              <View style={styles.patternDetails}>
-                <Text style={styles.symptomsText}>
-                  Symptoms: <Text style={styles.symptomsList}>{pattern.symptoms.join(', ')}</Text>
-                </Text>
-                <View style={styles.patternMetrics}>
-                  <View style={styles.metric}>
-                    <Text style={styles.metricLabel}>Severity</Text>
-                    <Text style={styles.metricValue}>{pattern.severity}/10</Text>
-                  </View>
-                  <View style={styles.metric}>
-                    <Text style={styles.metricLabel}>Frequency</Text>
-                    <Text style={styles.metricValue}>{pattern.frequency}x</Text>
-                  </View>
-                  <View style={styles.metric}>
-                    <Text style={styles.metricLabel}>Duration</Text>
-                    <Text style={styles.metricValue}>{pattern.duration} days</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Lifestyle Factors */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Lifestyle Assessment</Text>
-        <View style={styles.lifestyleCard}>
-          <View style={styles.lifestyleMetric}>
-            <Text style={styles.lifestyleLabel}>Sleep Quality</Text>
-            <View style={styles.lifestyleBar}>
-              <View 
-                style={[
-                  styles.lifestyleBarFill,
-                  { width: `${(assessment.lifestyleFactors.sleepQuality / 10) * 100}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.sleepQuality.toFixed(1)}/10</Text>
-          </View>
-          <View style={styles.lifestyleMetric}>
-            <Text style={styles.lifestyleLabel}>Stress Level</Text>
-            <View style={styles.lifestyleBar}>
-              <View 
-                style={[
-                  styles.lifestyleBarFill,
-                  { width: `${(assessment.lifestyleFactors.stressLevel / 10) * 100}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.stressLevel.toFixed(1)}/10</Text>
-          </View>
-          <View style={styles.lifestyleMetric}>
-            <Text style={styles.lifestyleLabel}>Exercise Level</Text>
-            <View style={styles.lifestyleBar}>
-              <View 
-                style={[
-                  styles.lifestyleBarFill,
-                  { width: `${(assessment.lifestyleFactors.exerciseLevel / 10) * 100}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.exerciseLevel.toFixed(1)}/10</Text>
-          </View>
-          <View style={styles.lifestyleMetric}>
-            <Text style={styles.lifestyleLabel}>Diet Quality</Text>
-            <View style={styles.lifestyleBar}>
-              <View 
-                style={[
-                  styles.lifestyleBarFill,
-                  { width: `${(assessment.lifestyleFactors.dietQuality / 10) * 100}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.dietQuality.toFixed(1)}/10</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Trends */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Health Trends</Text>
-        <View style={styles.trendsCard}>
-          <View style={styles.trendItem}>
-            <Text style={styles.trendLabel}>Symptom Frequency</Text>
-            <Text style={[
-              styles.trendValue,
-              { color: assessment.trends.symptomFrequency === 'increasing' ? '#FF4444' : 
-                       assessment.trends.symptomFrequency === 'decreasing' ? '#00AA00' : '#666666' }
-            ]}>
-              {assessment.trends.symptomFrequency}
-            </Text>
-          </View>
-          <View style={styles.trendItem}>
-            <Text style={styles.trendLabel}>Severity Trend</Text>
-            <Text style={[
-              styles.trendValue,
-              { color: assessment.trends.severityTrend === 'increasing' ? '#FF4444' : 
-                       assessment.trends.severityTrend === 'decreasing' ? '#00AA00' : '#666666' }
-            ]}>
-              {assessment.trends.severityTrend}
-            </Text>
-          </View>
-          <View style={styles.trendItem}>
-            <Text style={styles.trendLabel}>Risk Progression</Text>
-            <Text style={[
-              styles.trendValue,
-              { color: assessment.trends.riskProgression === 'worsening' ? '#FF4444' : 
-                       assessment.trends.riskProgression === 'improving' ? '#00AA00' : '#666666' }
-            ]}>
-              {assessment.trends.riskProgression}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Recommendations */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recommendations</Text>
-        <View style={styles.recommendationsCard}>
-          {assessment.recommendations.map((recommendation, index) => (
-            <View key={index} style={styles.recommendationItem}>
-              <Ionicons name="checkmark-circle" size={20} color="#00AA00" />
-              <Text style={styles.recommendationItemText}>{recommendation}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Next Assessment */}
-      <View style={styles.section}>
-        <View style={styles.nextAssessmentCard}>
-          <Ionicons name="calendar" size={24} color="#007AFF" />
-          <View style={styles.nextAssessmentContent}>
-            <Text style={styles.nextAssessmentTitle}>Next Assessment</Text>
-            <Text style={styles.nextAssessmentDate}>
-              {formatDate(assessment.nextAssessmentDate)}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Disclaimer */}
-      <View style={styles.disclaimer}>
-        <Text style={styles.disclaimerText}>
-          ⚠️ This assessment is for informational purposes only and should not replace professional medical advice. 
-          Always consult with a healthcare provider for proper diagnosis and treatment.
-          {'\n\n'}This tool analyzes patterns in your health data to provide general insights and recommendations. 
-          It is not a diagnostic tool and cannot predict or diagnose medical conditions.
-        </Text>
-      </View>
-    </ScrollView>
-  );
+      </ScrollView>
+    );
   } catch (renderError) {
     console.error('❌ RiskAssessmentScreen: Render error:', renderError);
     return (
@@ -504,6 +437,26 @@ const styles = StyleSheet.create({
     color: '#555',
     marginTop: 8,
     lineHeight: 26,
+  },
+  symptomAnalysisButton: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  symptomAnalysisButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '700',
+    marginLeft: 12,
   },
   riskLevelCard: {
     backgroundColor: 'white',
@@ -847,3 +800,4 @@ const styles = StyleSheet.create({
 });
 
 export default RiskAssessmentScreen;
+
