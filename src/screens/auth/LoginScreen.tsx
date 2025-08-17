@@ -118,14 +118,6 @@ const LoginScreen = ({ navigation }: any) => {
             <Text style={styles.formSubtitle}>Sign in to continue</Text>
             
             {/* Debug info */}
-            <View style={styles.debugInfo}>
-              <Text style={styles.debugText}>
-                📧 Email: {email || '(empty)'} | 🔐 Password: {password ? `${password.length} chars` : '(empty)'}
-              </Text>
-              <Text style={styles.debugText}>
-                🔄 Loading: {isLoading ? 'YES' : 'NO'} | ✅ Success: {loginSuccess ? 'YES' : 'NO'}
-              </Text>
-            </View>
 
             <View style={styles.inputContainer}>
               <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />

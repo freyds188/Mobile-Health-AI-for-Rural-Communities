@@ -6,12 +6,15 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  ActivityIndicator
+  ActivityIndicator,
+  RefreshControl,
+  Dimensions
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { riskAssessmentService, RiskAssessment } from '../services/RiskAssessmentService';
 import { DatabaseInitializationHelper } from '../utils/DatabaseInitializationHelper';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 // Available symptoms for selection
 const AVAILABLE_SYMPTOMS = {
@@ -49,7 +52,6 @@ const AVAILABLE_SYMPTOMS = {
 
 const RiskAssessmentScreen = () => {
   const { user } = useAuth();
-  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [assessment, setAssessment] = useState<RiskAssessment | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,10 +101,30 @@ const RiskAssessmentScreen = () => {
     }
   };
 
-  const resetAssessment = () => {
-    setSelectedSymptoms([]);
-    setAssessment(null);
-    setError(null);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await performRiskAssessment();
+    setRefreshing(false);
+  };
+
+  const getRiskLevelColor = (riskLevel: string) => {
+    switch (riskLevel) {
+      case 'critical': return '#FF4444';
+      case 'high': return '#FF8800';
+      case 'medium': return '#FFAA00';
+      case 'low': return '#00AA00';
+      default: return '#666666';
+    }
+  };
+
+  const getRiskLevelIcon = (riskLevel: string) => {
+    switch (riskLevel) {
+      case 'critical': return 'warning';
+      case 'high': return 'alert-circle';
+      case 'medium': return 'information-circle';
+      case 'low': return 'checkmark-circle';
+      default: return 'help-circle';
+    }
   };
 
   const getUrgencyColor = (urgency: string) => {
@@ -193,218 +215,272 @@ const RiskAssessmentScreen = () => {
 
   if (assessment) {
     return (
-      <ScrollView style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <Ionicons name="analytics" size={32} color="#007AFF" />
-            <Text style={styles.headerTitle}>Risk Assessment Results</Text>
-          </View>
-        </View>
-
-        {/* Selected Symptoms Summary */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="medical" size={24} color="#007AFF" />
-            <Text style={styles.sectionTitle}>Your Selected Symptoms</Text>
-          </View>
-          <View style={styles.symptomsSummary}>
-            {selectedSymptoms.map((symptom, index) => (
-              <View key={index} style={styles.symptomTag}>
-                <Text style={styles.symptomTagText}>{symptom}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Potential Conditions */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="medical" size={28} color="#007AFF" />
-            <Text style={styles.sectionTitle}>Potential Health Conditions</Text>
-          </View>
-          {assessment.potentialConditions.length > 0 ? (
-            <>
-              <View style={styles.conditionsSummary}>
-                <Text style={styles.conditionsSummaryText}>
-                  Found {assessment.potentialConditions.length} potential condition{assessment.potentialConditions.length > 1 ? 's' : ''} based on your symptoms
-                </Text>
-              </View>
-              {assessment.potentialConditions.map((condition, index) => (
-                <View key={index} style={styles.conditionCard}>
-                  <View style={styles.conditionHeader}>
-                    <View style={styles.conditionTitleContainer}>
-                      <Text style={styles.conditionNumber}>#{index + 1}</Text>
-                      <Text style={styles.conditionName}>{condition.condition}</Text>
-                    </View>
-                    <View style={[
-                      styles.urgencyBadge,
-                      { backgroundColor: getUrgencyColor(condition.urgency) }
-                    ]}>
-                      <Text style={styles.urgencyText}>{condition.urgency.toUpperCase()}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.conditionDetails}>
-                    <View style={styles.riskIndicator}>
-                      <View style={styles.riskLabel}>
-                        <Text style={styles.riskText}>Risk Level</Text>
-                        <Text style={styles.riskValue}>{getRiskLevelText(condition.probability)}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.conditionMetrics}>
-                      <View style={styles.metricItem}>
-                        <Text style={styles.metricLabel}>Severity:</Text>
-                        <Text style={styles.metricValue}>{condition.severity}</Text>
-                      </View>
-                      <View style={styles.metricItem}>
-                        <Text style={styles.metricLabel}>Risk Level:</Text>
-                        <Text style={styles.metricValue}>{getRiskLevelText(condition.probability)}</Text>
-                      </View>
-                    </View>
-                  </View>
-                  {condition.recommendations.length > 0 && (
-                    <View style={styles.recommendationsContainer}>
-                      <Text style={styles.recommendationsTitle}>Recommendations:</Text>
-                      {condition.recommendations.map((rec, recIndex) => (
-                        <View key={recIndex} style={styles.recommendationItem}>
-                          <Ionicons name="checkmark-circle" size={16} color="#00AA00" />
-                          <Text style={styles.recommendationText}>{rec}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              ))}
-            </>
-          ) : (
-            <View style={styles.noConditionsCard}>
-              <Ionicons name="checkmark-circle" size={64} color="#00AA00" />
-              <Text style={styles.noConditionsTitle}>No Potential Conditions Detected</Text>
-              <Text style={styles.noConditionsText}>
-                Great news! Based on your selected symptoms, the AI did not identify any immediate potential health conditions.
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* New Assessment Button */}
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.newAssessmentButton} onPress={resetAssessment}>
-            <Ionicons name="refresh" size={24} color="white" />
-            <Text style={styles.newAssessmentButtonText}>Start New Assessment</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+      <View style={styles.errorContainer}>
+        <Ionicons name="medical" size={64} color="#666" />
+        <Text style={styles.errorTitle}>No Assessment Available</Text>
+        <Text style={styles.errorText}>
+          Complete your risk assessment to see detailed health insights and potential conditions.
+        </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={performRiskAssessment}>
+          <Text style={styles.retryButtonText}>Start Assessment</Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
-  // Symptom Selection Interface
-  return (
-    <ScrollView style={styles.container}>
+  try {
+    return (
+      <ScrollView
+        style={styles.container}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <Ionicons name="analytics" size={32} color="#007AFF" />
           <Text style={styles.headerTitle}>Risk Assessment</Text>
           <Text style={styles.headerSubtitle}>
-            Select the symptoms you're experiencing
+            {formatDate(assessment.timestamp)}
           </Text>
         </View>
       </View>
 
-      {/* Selected Symptoms */}
-      {selectedSymptoms.length > 0 && (
+
+      {/* Potential Conditions */}
+      {assessment.potentialConditions.length > 0 && (
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="checkmark-circle" size={24} color="#00AA00" />
-            <Text style={styles.sectionTitle}>Selected Symptoms ({selectedSymptoms.length})</Text>
-          </View>
-          <View style={styles.selectedSymptomsContainer}>
-            {selectedSymptoms.map((symptom, index) => (
-              <View key={index} style={styles.selectedSymptomTag}>
-                <Text style={styles.selectedSymptomText}>{symptom}</Text>
-                <TouchableOpacity 
-                  style={styles.removeSymptomButton}
-                  onPress={() => toggleSymptom(symptom)}
-                >
-                  <Ionicons name="close" size={16} color="#FF4444" />
-                </TouchableOpacity>
+          <Text style={styles.sectionTitle}>Potential Conditions</Text>
+          {assessment.potentialConditions.map((condition, index) => (
+            <View key={index} style={styles.conditionCard}>
+              <View style={styles.conditionHeader}>
+                <Text style={styles.conditionName}>{condition.condition}</Text>
+                <View style={[
+                  styles.urgencyBadge,
+                  { backgroundColor: getUrgencyColor(condition.urgency) }
+                ]}>
+                  <Text style={styles.urgencyText}>{condition.urgency.toUpperCase()}</Text>
+                </View>
               </View>
-            ))}
-          </View>
+              <View style={styles.conditionDetails}>
+                <View style={styles.riskIndicator}>
+                  <View style={styles.riskLabel}>
+                    <Text style={styles.riskText}>Risk Level</Text>
+                    <Text style={styles.riskValue}>{getRiskLevelText(condition.probability)}</Text>
+                  </View>
+                  <View style={styles.riskBarContainer}>
+                    <View 
+                      style={[
+                        styles.riskBarFill,
+                        { width: `${condition.probability * 100}%` }
+                      ]} 
+                    />
+                  </View>
+                </View>
+                <Text style={styles.severityText}>
+                  Severity: <Text style={styles.severityValue}>{condition.severity}</Text>
+                </Text>
+              </View>
+              {condition.recommendations.length > 0 && (
+                <View style={styles.recommendationsContainer}>
+                  <Text style={styles.recommendationsTitle}>Recommendations:</Text>
+                  {condition.recommendations.map((rec, recIndex) => (
+                    <Text key={recIndex} style={styles.recommendationText}>• {rec}</Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          ))}
         </View>
       )}
 
-      {/* Symptom Categories */}
+      {/* Symptom Patterns */}
+      {assessment.symptomPatterns.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Symptom Patterns</Text>
+          {assessment.symptomPatterns.slice(0, 5).map((pattern, index) => (
+            <View key={index} style={styles.patternCard}>
+              <View style={styles.patternHeader}>
+                <Text style={styles.patternTitle}>Pattern {index + 1}</Text>
+                <View style={[
+                  styles.riskBadge,
+                  { backgroundColor: getRiskLevelColor(pattern.riskLevel) }
+                ]}>
+                  <Text style={styles.riskBadgeText}>{pattern.riskLevel.toUpperCase()}</Text>
+                </View>
+              </View>
+              <View style={styles.patternDetails}>
+                <Text style={styles.symptomsText}>
+                  Symptoms: <Text style={styles.symptomsList}>{pattern.symptoms.join(', ')}</Text>
+                </Text>
+                <View style={styles.patternMetrics}>
+                  <View style={styles.metric}>
+                    <Text style={styles.metricLabel}>Severity</Text>
+                    <Text style={styles.metricValue}>{pattern.severity}/10</Text>
+                  </View>
+                  <View style={styles.metric}>
+                    <Text style={styles.metricLabel}>Frequency</Text>
+                    <Text style={styles.metricValue}>{pattern.frequency}x</Text>
+                  </View>
+                  <View style={styles.metric}>
+                    <Text style={styles.metricLabel}>Duration</Text>
+                    <Text style={styles.metricValue}>{pattern.duration} days</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
+
+      {/* Lifestyle Factors */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Select Your Symptoms</Text>
-        <Text style={styles.sectionSubtitle}>
-          Tap on the symptoms you're currently experiencing
-        </Text>
-        
-        {Object.entries(AVAILABLE_SYMPTOMS).map(([category, symptoms]) => (
-          <View key={category} style={styles.categoryContainer}>
-            <View style={styles.categoryHeader}>
-              <Ionicons 
-                name={
-                  category === 'Respiratory' ? 'medical' :
-                  category === 'Cardiovascular' ? 'heart' :
-                  category === 'Neurological' ? 'medical' :
-                  category === 'Gastrointestinal' ? 'restaurant' :
-                  category === 'Musculoskeletal' ? 'body' :
-                  category === 'Mental Health' ? 'happy' :
-                  'medical'
-                } 
-                size={24} 
-                color="#007AFF" 
+        <Text style={styles.sectionTitle}>Lifestyle Assessment</Text>
+        <View style={styles.lifestyleCard}>
+          <View style={styles.lifestyleMetric}>
+            <Text style={styles.lifestyleLabel}>Sleep Quality</Text>
+            <View style={styles.lifestyleBar}>
+              <View 
+                style={[
+                  styles.lifestyleBarFill,
+                  { width: `${(assessment.lifestyleFactors.sleepQuality / 10) * 100}%` }
+                ]} 
               />
-              <Text style={styles.categoryTitle}>{category}</Text>
             </View>
-            <View style={styles.symptomsGrid}>
-              {symptoms.map((symptom) => (
-                <TouchableOpacity
-                  key={symptom}
-                  style={[
-                    styles.symptomButton,
-                    selectedSymptoms.includes(symptom) && styles.symptomButtonSelected
-                  ]}
-                  onPress={() => toggleSymptom(symptom)}
-                >
-                  <Text style={[
-                    styles.symptomButtonText,
-                    selectedSymptoms.includes(symptom) && styles.symptomButtonTextSelected
-                  ]}>
-                    {symptom}
-                  </Text>
-                  {selectedSymptoms.includes(symptom) && (
-                    <Ionicons name="checkmark" size={16} color="white" style={styles.checkmark} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
+            <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.sleepQuality.toFixed(1)}/10</Text>
           </View>
-        ))}
+          <View style={styles.lifestyleMetric}>
+            <Text style={styles.lifestyleLabel}>Stress Level</Text>
+            <View style={styles.lifestyleBar}>
+              <View 
+                style={[
+                  styles.lifestyleBarFill,
+                  { width: `${(assessment.lifestyleFactors.stressLevel / 10) * 100}%` }
+                ]} 
+              />
+            </View>
+            <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.stressLevel.toFixed(1)}/10</Text>
+          </View>
+          <View style={styles.lifestyleMetric}>
+            <Text style={styles.lifestyleLabel}>Exercise Level</Text>
+            <View style={styles.lifestyleBar}>
+              <View 
+                style={[
+                  styles.lifestyleBarFill,
+                  { width: `${(assessment.lifestyleFactors.exerciseLevel / 10) * 100}%` }
+                ]} 
+              />
+            </View>
+            <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.exerciseLevel.toFixed(1)}/10</Text>
+          </View>
+          <View style={styles.lifestyleMetric}>
+            <Text style={styles.lifestyleLabel}>Diet Quality</Text>
+            <View style={styles.lifestyleBar}>
+              <View 
+                style={[
+                  styles.lifestyleBarFill,
+                  { width: `${(assessment.lifestyleFactors.dietQuality / 10) * 100}%` }
+                ]} 
+              />
+            </View>
+            <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.dietQuality.toFixed(1)}/10</Text>
+          </View>
+        </View>
       </View>
 
-      {/* Analyze Button */}
-      {selectedSymptoms.length > 0 && (
-        <View style={styles.section}>
-          <TouchableOpacity 
-            style={styles.analyzeButton} 
-            onPress={performSymptomAnalysis}
-          >
-            <Ionicons name="analytics" size={24} color="white" />
-            <Text style={styles.analyzeButtonText}>
-              Analyze {selectedSymptoms.length} Symptom{selectedSymptoms.length > 1 ? 's' : ''}
+      {/* Trends */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Health Trends</Text>
+        <View style={styles.trendsCard}>
+          <View style={styles.trendItem}>
+            <Text style={styles.trendLabel}>Symptom Frequency</Text>
+            <Text style={[
+              styles.trendValue,
+              { color: assessment.trends.symptomFrequency === 'increasing' ? '#FF4444' : 
+                       assessment.trends.symptomFrequency === 'decreasing' ? '#00AA00' : '#666666' }
+            ]}>
+              {assessment.trends.symptomFrequency}
             </Text>
-          </TouchableOpacity>
-          <Text style={styles.analyzeButtonSubtext}>
-            The AI will analyze your selected symptoms and provide potential health insights
-          </Text>
+          </View>
+          <View style={styles.trendItem}>
+            <Text style={styles.trendLabel}>Severity Trend</Text>
+            <Text style={[
+              styles.trendValue,
+              { color: assessment.trends.severityTrend === 'increasing' ? '#FF4444' : 
+                       assessment.trends.severityTrend === 'decreasing' ? '#00AA00' : '#666666' }
+            ]}>
+              {assessment.trends.severityTrend}
+            </Text>
+          </View>
+          <View style={styles.trendItem}>
+            <Text style={styles.trendLabel}>Risk Progression</Text>
+            <Text style={[
+              styles.trendValue,
+              { color: assessment.trends.riskProgression === 'worsening' ? '#FF4444' : 
+                       assessment.trends.riskProgression === 'improving' ? '#00AA00' : '#666666' }
+            ]}>
+              {assessment.trends.riskProgression}
+            </Text>
+          </View>
         </View>
-      )}
+      </View>
+
+      {/* Recommendations */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Recommendations</Text>
+        <View style={styles.recommendationsCard}>
+          {assessment.recommendations.map((recommendation, index) => (
+            <View key={index} style={styles.recommendationItem}>
+              <Ionicons name="checkmark-circle" size={20} color="#00AA00" />
+              <Text style={styles.recommendationItemText}>{recommendation}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Next Assessment */}
+      <View style={styles.section}>
+        <View style={styles.nextAssessmentCard}>
+          <Ionicons name="calendar" size={24} color="#007AFF" />
+          <View style={styles.nextAssessmentContent}>
+            <Text style={styles.nextAssessmentTitle}>Next Assessment</Text>
+            <Text style={styles.nextAssessmentDate}>
+              {formatDate(assessment.nextAssessmentDate)}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Disclaimer */}
+      <View style={styles.disclaimer}>
+        <Text style={styles.disclaimerText}>
+          ⚠️ This assessment is for informational purposes only and should not replace professional medical advice. 
+          Always consult with a healthcare provider for proper diagnosis and treatment.
+          {'\n\n'}This tool analyzes patterns in your health data to provide general insights and recommendations. 
+          It is not a diagnostic tool and cannot predict or diagnose medical conditions.
+        </Text>
+      </View>
     </ScrollView>
   );
+  } catch (renderError) {
+    console.error('❌ RiskAssessmentScreen: Render error:', renderError);
+    return (
+      <View style={styles.errorContainer}>
+        <Ionicons name="bug" size={64} color="#FF4444" />
+        <Text style={styles.errorTitle}>Rendering Error</Text>
+        <Text style={styles.errorText}>
+          An error occurred while displaying the assessment. Please try again.
+        </Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => {
+          setError(null);
+          setAssessment(null);
+          performRiskAssessment();
+        }}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 };
 
 const styles = StyleSheet.create({
@@ -503,69 +579,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     lineHeight: 26,
   },
-  section: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 20,
-    lineHeight: 36,
-  },
-  sectionSubtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 24,
-    lineHeight: 24,
-  },
-  selectedSymptomsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  selectedSymptomTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#007AFF',
-  },
-  selectedSymptomText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#007AFF',
-    marginRight: 8,
-  },
-  removeSymptomButton: {
-    padding: 4,
-  },
-  symptomsSummary: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  symptomTag: {
-    backgroundColor: '#F0F2F5',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  symptomTagText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#444',
-  },
-  categoryContainer: {
+  riskLevelCard: {
     backgroundColor: 'white',
     borderRadius: 20,
     padding: 24,
@@ -850,3 +864,4 @@ const styles = StyleSheet.create({
 });
 
 export default RiskAssessmentScreen;
+

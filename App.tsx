@@ -15,8 +15,17 @@ import LoginScreen from './src/screens/auth/LoginScreen';
 import RegisterScreen from './src/screens/auth/RegisterScreen';
 import MainTabNavigator from './src/navigation/MainTabNavigator';
 import LoadingScreen from './src/screens/LoadingScreen';
+import SymptomInputScreen from './src/screens/SymptomInputScreen';
 
-const Stack = createStackNavigator();
+export type RootStackParamList = {
+  Loading: undefined;
+  Login: undefined;
+  Register: undefined;
+  Main: undefined;
+  'Symptom Analysis': undefined;
+};
+
+const Stack = createStackNavigator<RootStackParamList>();
 
 export default function App() {
   const fontsLoaded = useAppFonts();
@@ -32,29 +41,27 @@ export default function App() {
   }
 
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <AuthProvider>
-          <HealthDataProvider>
-            <ChatbotProvider>
-              <NavigationContainer>
-                <Stack.Navigator
-                  initialRouteName="Loading"
-                  screenOptions={{
-                    headerShown: false,
-                  }}
-                >
-                  <Stack.Screen name="Loading" component={LoadingScreen} />
-                  <Stack.Screen name="Login" component={LoginScreen} />
-                  <Stack.Screen name="Register" component={RegisterScreen} />
-                  <Stack.Screen name="Main" component={MainTabNavigator} />
-                </Stack.Navigator>
-              </NavigationContainer>
-              <StatusBar style="auto" />
-            </ChatbotProvider>
-          </HealthDataProvider>
-        </AuthProvider>
-      </SafeAreaProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <HealthDataProvider>
+          <ChatbotProvider>
+            <NavigationContainer>
+              <Stack.Navigator
+                initialRouteName="Loading"
+                screenOptions={{
+                  headerShown: false,
+                }}
+              >
+                <Stack.Screen name="Loading" component={LoadingScreen} />
+                <Stack.Screen name="Login" component={LoginScreen} />
+                <Stack.Screen name="Register" component={RegisterScreen} />
+                <Stack.Screen name="Main" component={MainTabNavigator} />
+              </Stack.Navigator>
+            </NavigationContainer>
+            <StatusBar style="auto" />
+          </ChatbotProvider>
+        </HealthDataProvider>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 } 
