@@ -1,0 +1,101 @@
+id,userId,timestamp,symptoms,severity,sleep,stress,exercise,diet,notes,age,gender,location,medical_history,season,time_of_day,weather_condition,occupation
+1,user001,2024-01-15T06:30:00Z,"[""headache"",""fatigue"",""muscle_weakness""]",7,5.5,8,15,balanced,"Early morning farm work symptoms",45,male,rural_area,"hypertension",winter,morning,cold,farming
+2,user002,2024-01-15T07:45:00Z,"[""cough"",""fever"",""shortness_of_breath""]",8,4.0,7,0,balanced,"Respiratory infection worsening",32,female,rural_area,"asthma",winter,morning,rainy,healthcare_worker
+3,user003,2024-01-15T08:15:00Z,"[""back_pain"",""joint_pain""]",6,6.0,6,20,high_protein,"Chronic pain from manual labor",55,male,rural_area,"arthritis",winter,morning,cold,construction
+4,user004,2024-01-15T09:00:00Z,"[""dizziness"",""nausea"",""headache""]",5,7.5,4,30,vegetarian,"Morning sickness symptoms",28,female,rural_area,"pregnancy",winter,morning,cloudy,teacher
+5,user005,2024-01-15T10:30:00Z,"[""chest_pain"",""shortness_of_breath""]",9,3.5,9,0,low_carb,"Acute cardiac symptoms",67,male,rural_area,"heart_disease",winter,morning,cold,retired
+6,user006,2024-01-15T11:15:00Z,"[""abdominal_pain"",""nausea"",""vomiting""]",7,5.0,6,10,balanced,"Food poisoning symptoms",41,female,rural_area,"gastritis",winter,morning,rainy,restaurant_worker
+7,user007,2024-01-15T12:00:00Z,"[""fatigue"",""muscle_weakness"",""joint_pain""]",6,6.5,5,25,balanced,"Post-viral fatigue syndrome",38,male,rural_area,"fibromyalgia",winter,afternoon,cloudy,office_worker
+8,user008,2024-01-15T13:30:00Z,"[""headache"",""dizziness"",""fatigue""]",4,8.0,3,45,vegan,"Stress-related symptoms",25,female,rural_area,"migraine",winter,afternoon,sunny,student
+9,user009,2024-01-15T14:15:00Z,"[""shortness_of_breath"",""chest_pain"",""fatigue""]",8,4.5,8,5,balanced,"COPD exacerbation",52,male,rural_area,"copd",winter,afternoon,cold,retired
+10,user010,2024-01-15T15:00:00Z,"[""fever"",""cough"",""muscle_weakness""]",7,5.5,7,0,balanced,"Influenza symptoms",35,female,rural_area,"none",winter,afternoon,rainy,healthcare_worker
+11,user011,2024-01-16T06:00:00Z,"[""back_pain"",""muscle_weakness""]",5,7.0,4,35,balanced,"Chronic back pain",49,male,rural_area,"herniated_disc",winter,morning,cold,farming
+12,user012,2024-01-16T07:30:00Z,"[""headache"",""nausea"",""dizziness""]",6,6.5,5,20,vegetarian,"Migraine with aura",43,female,rural_area,"chronic_migraine",winter,morning,cloudy,teacher
+13,user013,2024-01-16T08:45:00Z,"[""joint_pain"",""muscle_weakness"",""fatigue""]",7,5.0,7,10,high_protein,"Rheumatoid arthritis flare",61,female,rural_area,"rheumatoid_arthritis",winter,morning,cold,retired
+14,user014,2024-01-16T09:30:00Z,"[""abdominal_pain"",""nausea""]",4,8.0,3,40,balanced,"IBS symptoms",33,female,rural_area,"ibs",winter,morning,sunny,office_worker
+15,user015,2024-01-16T10:15:00Z,"[""chest_pain"",""shortness_of_breath"",""fatigue""]",9,3.0,9,0,low_carb,"Acute myocardial infarction",71,male,rural_area,"coronary_artery_disease",winter,morning,cold,retired
+16,user016,2024-01-16T11:00:00Z,"[""dizziness"",""headache"",""fatigue""]",5,7.5,4,30,balanced,"Low blood pressure symptoms",46,female,rural_area,"low_blood_pressure",winter,morning,cloudy,healthcare_worker
+17,user017,2024-01-16T12:30:00Z,"[""cough"",""fever"",""shortness_of_breath""]",8,4.5,8,5,balanced,"Pneumonia symptoms",58,male,rural_area,"pneumonia",winter,afternoon,rainy,construction
+18,user018,2024-01-16T13:15:00Z,"[""muscle_weakness"",""joint_pain"",""fatigue""]",6,6.0,6,15,vegetarian,"Lupus flare symptoms",37,female,rural_area,"systemic_lupus",winter,afternoon,cold,office_worker
+19,user019,2024-01-16T14:00:00Z,"[""headache"",""stress""]",3,8.5,2,50,vegan,"Mild tension headache",27,male,rural_area,"tension_headaches",winter,afternoon,sunny,student
+20,user020,2024-01-16T15:30:00Z,"[""abdominal_pain"",""nausea"",""vomiting""]",6,6.5,5,20,balanced,"Gastritis flare-up",39,female,rural_area,"gastritis",winter,afternoon,cloudy,restaurant_worker
+21,user021,2024-02-15T06:30:00Z,"[""allergies"",""runny_nose"",""itchy_eyes""]",5,7.0,4,30,balanced,"Seasonal allergy symptoms",31,male,rural_area,"seasonal_allergies",spring,morning,sunny,farming
+22,user022,2024-02-15T07:45:00Z,"[""headache"",""fatigue"",""muscle_weakness""]",6,6.0,6,25,high_protein,"Spring fatigue symptoms",44,female,rural_area,"chronic_fatigue",spring,morning,cloudy,teacher
+23,user023,2024-02-15T08:15:00Z,"[""back_pain"",""joint_pain""]",7,5.5,7,15,balanced,"Arthritis aggravated by weather",56,male,rural_area,"osteoarthritis",spring,morning,rainy,construction
+24,user024,2024-02-15T09:00:00Z,"[""dizziness"",""nausea"",""headache""]",5,7.5,4,35,vegetarian,"Vestibular disorder symptoms",29,female,rural_area,"vestibular_disorder",spring,morning,sunny,healthcare_worker
+25,user025,2024-02-15T10:30:00Z,"[""chest_pain"",""shortness_of_breath""]",8,4.0,8,0,low_carb,"Exercise-induced angina",65,male,rural_area,"stable_angina",spring,morning,cloudy,retired
+26,user026,2024-02-15T11:15:00Z,"[""abdominal_pain"",""bloating"",""nausea""]",6,6.5,5,20,balanced,"IBS with bloating",42,female,rural_area,"ibs",spring,morning,sunny,office_worker
+27,user027,2024-02-15T12:00:00Z,"[""fatigue"",""muscle_weakness"",""joint_pain""]",7,5.0,7,10,balanced,"Fibromyalgia flare",40,male,rural_area,"fibromyalgia",spring,afternoon,rainy,office_worker
+28,user028,2024-02-15T13:30:00Z,"[""headache"",""dizziness"",""fatigue""]",4,8.0,3,45,vegan,"Stress and weather-related symptoms",26,female,rural_area,"none",spring,afternoon,sunny,student
+29,user029,2024-02-15T14:15:00Z,"[""shortness_of_breath"",""cough"",""chest_pain""]",8,4.5,8,5,balanced,"Asthma exacerbation",53,male,rural_area,"asthma",spring,afternoon,cloudy,construction
+30,user030,2024-02-15T15:00:00Z,"[""fever"",""cough"",""muscle_weakness""]",7,5.5,7,0,balanced,"Spring viral infection",36,female,rural_area,"none",spring,afternoon,rainy,healthcare_worker
+31,user031,2024-05-15T06:30:00Z,"[""heat_exhaustion"",""fatigue"",""dizziness""]",6,6.0,6,30,balanced,"Heat-related symptoms",48,male,rural_area,"none",summer,morning,hot,farming
+32,user032,2024-05-15T07:45:00Z,"[""dehydration"",""headache"",""muscle_cramps""]",5,7.0,4,25,high_protein,"Dehydration from outdoor work",34,female,rural_area,"none",summer,morning,hot,construction
+33,user033,2024-05-15T08:15:00Z,"[""sunburn"",""skin_irritation"",""fatigue""]",4,7.5,3,40,balanced,"Sun exposure symptoms",51,male,rural_area,"sensitive_skin",summer,morning,sunny,outdoor_worker
+34,user034,2024-05-15T09:00:00Z,"[""heat_rash"",""itching"",""irritation""]",3,8.0,2,50,vegetarian,"Heat rash symptoms",28,female,rural_area,"sensitive_skin",summer,morning,hot,teacher
+35,user035,2024-05-15T10:30:00Z,"[""chest_pain"",""shortness_of_breath"",""fatigue""]",8,4.0,8,0,low_carb,"Heat-induced cardiac stress",69,male,rural_area,"heart_disease",summer,morning,hot,retired
+36,user036,2024-05-15T11:15:00Z,"[""abdominal_pain"",""nausea"",""vomiting""]",6,6.5,5,20,balanced,"Food poisoning in summer",45,female,rural_area,"gastritis",summer,morning,hot,restaurant_worker
+37,user037,2024-05-15T12:00:00Z,"[""fatigue"",""muscle_weakness"",""joint_pain""]",5,7.0,4,35,balanced,"Heat-related fatigue",39,male,rural_area,"chronic_fatigue",summer,afternoon,hot,office_worker
+38,user038,2024-05-15T13:30:00Z,"[""headache"",""dizziness"",""fatigue""]",4,8.0,3,45,vegan,"Heat-related headache",24,female,rural_area,"migraine",summer,afternoon,sunny,student
+39,user039,2024-05-15T14:15:00Z,"[""shortness_of_breath"",""cough"",""chest_pain""]",7,5.5,7,10,balanced,"Summer asthma flare",54,male,rural_area,"asthma",summer,afternoon,hot,construction
+40,user040,2024-05-15T15:00:00Z,"[""allergies"",""runny_nose"",""itchy_eyes""]",5,7.5,4,30,balanced,"Summer allergy symptoms",32,female,rural_area,"seasonal_allergies",summer,afternoon,sunny,healthcare_worker
+41,user041,2024-08-15T06:30:00Z,"[""back_pain"",""muscle_weakness""]",6,6.5,5,25,balanced,"Harvest season strain",47,male,rural_area,"herniated_disc",summer,morning,warm,farming
+42,user042,2024-08-15T07:45:00Z,"[""headache"",""fatigue"",""muscle_weakness""]",5,7.0,4,35,high_protein,"End of summer fatigue",33,female,rural_area,"chronic_fatigue",summer,morning,warm,teacher
+43,user043,2024-08-15T08:15:00Z,"[""joint_pain"",""muscle_weakness"",""fatigue""]",7,5.5,7,15,balanced,"Arthritis aggravated by humidity",58,male,rural_area,"rheumatoid_arthritis",summer,morning,humid,construction
+44,user044,2024-08-15T09:00:00Z,"[""dizziness"",""nausea"",""headache""]",4,8.0,3,40,vegetarian,"Humidity-related symptoms",30,female,rural_area,"vestibular_disorder",summer,morning,humid,office_worker
+45,user045,2024-08-15T10:30:00Z,"[""chest_pain"",""shortness_of_breath""]",8,4.0,8,0,low_carb,"Humidity-induced cardiac stress",66,male,rural_area,"heart_failure",summer,morning,humid,retired
+46,user046,2024-08-15T11:15:00Z,"[""abdominal_pain"",""bloating"",""nausea""]",5,7.5,4,30,balanced,"Humidity-related digestive issues",43,female,rural_area,"ibs",summer,morning,humid,restaurant_worker
+47,user047,2024-08-15T12:00:00Z,"[""fatigue"",""muscle_weakness"",""joint_pain""]",6,6.0,6,20,balanced,"Humidity-related fibromyalgia",41,male,rural_area,"fibromyalgia",summer,afternoon,humid,office_worker
+48,user048,2024-08-15T13:30:00Z,"[""headache"",""dizziness"",""fatigue""]",3,8.5,2,50,vegan,"Mild humidity-related symptoms",25,female,rural_area,"none",summer,afternoon,humid,student
+49,user049,2024-08-15T14:15:00Z,"[""shortness_of_breath"",""cough"",""chest_pain""]",7,5.0,7,10,balanced,"Humidity-induced breathing difficulty",55,male,rural_area,"copd",summer,afternoon,humid,construction
+50,user050,2024-08-15T15:00:00Z,"[""allergies"",""runny_nose"",""itchy_eyes""]",4,7.5,3,35,balanced,"Late summer allergy symptoms",29,female,rural_area,"seasonal_allergies",summer,afternoon,humid,healthcare_worker
+51,user051,2024-11-15T06:30:00Z,"[""headache"",""fatigue"",""muscle_weakness""]",7,5.5,8,15,balanced,"Winter depression symptoms",46,male,rural_area,"seasonal_affective_disorder",fall,morning,cold,farming
+52,user052,2024-11-15T07:45:00Z,"[""joint_pain"",""muscle_weakness"",""fatigue""]",6,6.5,6,25,high_protein,"Cold weather arthritis",59,male,rural_area,"osteoarthritis",fall,morning,cold,construction
+53,user053,2024-11-15T08:15:00Z,"[""back_pain"",""muscle_weakness""]",5,7.0,4,35,balanced,"Cold-related muscle tension",50,female,rural_area,"herniated_disc",fall,morning,cold,office_worker
+54,user054,2024-11-15T09:00:00Z,"[""dizziness"",""headache"",""fatigue""]",4,8.0,3,40,vegetarian,"Cold weather dizziness",27,female,rural_area,"low_blood_pressure",fall,morning,cold,teacher
+55,user055,2024-11-15T10:30:00Z,"[""chest_pain"",""shortness_of_breath""]",8,4.0,8,0,low_carb,"Cold-induced cardiac symptoms",68,male,rural_area,"coronary_artery_disease",fall,morning,cold,retired
+56,user056,2024-11-15T11:15:00Z,"[""abdominal_pain"",""nausea""]",5,7.5,4,30,balanced,"Cold weather digestive issues",44,female,rural_area,"gastritis",fall,morning,cold,restaurant_worker
+57,user057,2024-11-15T12:00:00Z,"[""fatigue"",""muscle_weakness"",""joint_pain""]",6,6.0,6,20,balanced,"Cold-related fibromyalgia",38,male,rural_area,"fibromyalgia",fall,afternoon,cold,office_worker
+58,user058,2024-11-15T13:30:00Z,"[""headache"",""dizziness"",""fatigue""]",3,8.5,2,45,vegan,"Mild cold weather symptoms",23,female,rural_area,"none",fall,afternoon,cold,student
+59,user059,2024-11-15T14:15:00Z,"[""shortness_of_breath"",""cough"",""chest_pain""]",7,5.0,7,10,balanced,"Cold-induced respiratory symptoms",56,male,rural_area,"asthma",fall,afternoon,cold,construction
+60,user060,2024-11-15T15:00:00Z,"[""allergies"",""runny_nose"",""itchy_eyes""]",4,7.5,3,35,balanced,"Fall allergy symptoms",31,female,rural_area,"seasonal_allergies",fall,afternoon,cold,healthcare_worker
+61,user061,2024-12-15T06:30:00Z,"[""headache"",""fatigue"",""muscle_weakness""]",8,4.5,9,10,balanced,"Severe winter depression",49,male,rural_area,"seasonal_affective_disorder",winter,morning,cold,farming
+62,user062,2024-12-15T07:45:00Z,"[""joint_pain"",""muscle_weakness"",""fatigue""]",7,5.5,7,20,high_protein,"Severe cold weather arthritis",62,male,rural_area,"rheumatoid_arthritis",winter,morning,cold,construction
+63,user063,2024-12-15T08:15:00Z,"[""back_pain"",""muscle_weakness""]",6,6.5,6,25,balanced,"Cold-related back strain",52,female,rural_area,"spinal_stenosis",winter,morning,cold,office_worker
+64,user064,2024-12-15T09:00:00Z,"[""dizziness"",""headache"",""fatigue""]",5,7.0,4,35,vegetarian,"Cold weather vestibular symptoms",29,female,rural_area,"vestibular_disorder",winter,morning,cold,teacher
+65,user065,2024-12-15T10:30:00Z,"[""chest_pain"",""shortness_of_breath""]",9,3.5,9,0,low_carb,"Severe cold-induced cardiac stress",70,male,rural_area,"unstable_angina",winter,morning,cold,retired
+66,user066,2024-12-15T11:15:00Z,"[""abdominal_pain"",""nausea"",""vomiting""]",6,6.0,6,15,balanced,"Cold weather gastritis",46,female,rural_area,"gastritis",winter,morning,cold,restaurant_worker
+67,user067,2024-12-15T12:00:00Z,"[""fatigue"",""muscle_weakness"",""joint_pain""]",7,5.0,7,10,balanced,"Severe cold-related fibromyalgia",42,male,rural_area,"fibromyalgia",winter,afternoon,cold,office_worker
+68,user068,2024-12-15T13:30:00Z,"[""headache"",""dizziness"",""fatigue""]",4,7.5,3,40,vegan,"Mild winter symptoms",26,female,rural_area,"none",winter,afternoon,cold,student
+69,user069,2024-12-15T14:15:00Z,"[""shortness_of_breath"",""cough"",""chest_pain""]",8,4.5,8,5,balanced,"Severe cold-induced respiratory symptoms",57,male,rural_area,"pneumonia",winter,afternoon,cold,construction
+70,user070,2024-12-15T15:00:00Z,"[""allergies"",""runny_nose"",""itchy_eyes""]",5,7.0,4,30,balanced,"Winter indoor allergy symptoms",33,female,rural_area,"seasonal_allergies",winter,afternoon,cold,healthcare_worker
+71,user071,2024-01-20T06:30:00Z,"[""headache"",""stress"",""anxiety""]",6,5.5,8,20,balanced,"Work-related stress symptoms",35,male,rural_area,"anxiety_disorder",winter,morning,cold,farming
+72,user072,2024-01-20T07:45:00Z,"[""depression"",""fatigue"",""sleep_issues""]",7,4.0,9,5,balanced,"Depression symptoms worsening",41,female,rural_area,"major_depression",winter,morning,cold,teacher
+73,user073,2024-01-20T08:15:00Z,"[""panic_attack"",""chest_pain"",""shortness_of_breath""]",8,5.0,9,0,low_carb,"Acute panic attack",38,male,rural_area,"panic_disorder",winter,morning,cold,office_worker
+74,user074,2024-01-20T09:00:00Z,"[""insomnia"",""fatigue"",""irritability""]",5,3.5,7,15,vegetarian,"Sleep disorder symptoms",44,female,rural_area,"insomnia",winter,morning,cold,healthcare_worker
+75,user075,2024-01-20T10:30:00Z,"[""headache"",""dizziness"",""nausea""]",6,6.0,6,25,balanced,"Stress-related symptoms",31,male,rural_area,"tension_headaches",winter,morning,cold,student
+76,user076,2024-01-20T11:15:00Z,"[""muscle_tension"",""back_pain"",""headache""]",5,6.5,5,30,high_protein,"Stress-related muscle tension",47,female,rural_area,"tension_headaches",winter,morning,cold,restaurant_worker
+77,user077,2024-01-20T12:00:00Z,"[""fatigue"",""depression"",""sleep_issues""]",7,4.5,8,10,balanced,"Depression with fatigue",39,male,rural_area,"major_depression",winter,afternoon,cold,office_worker
+78,user078,2024-01-20T13:30:00Z,"[""anxiety"",""chest_pain"",""shortness_of_breath""]",6,6.0,7,20,vegan,"Anxiety with physical symptoms",28,female,rural_area,"anxiety_disorder",winter,afternoon,cold,teacher
+79,user079,2024-01-20T14:15:00Z,"[""panic_attack"",""dizziness"",""nausea""]",8,4.0,9,0,balanced,"Severe panic attack",36,male,rural_area,"panic_disorder",winter,afternoon,cold,construction
+80,user080,2024-01-20T15:00:00Z,"[""insomnia"",""fatigue"",""irritability""]",5,3.0,8,15,balanced,"Chronic insomnia symptoms",43,female,rural_area,"chronic_insomnia",winter,afternoon,cold,healthcare_worker
+81,user081,2024-02-20T06:30:00Z,"[""headache"",""eye_strain"",""fatigue""]",5,6.5,5,25,balanced,"Computer vision syndrome",32,male,rural_area,"none",spring,morning,sunny,office_worker
+82,user082,2024-02-20T07:45:00Z,"[""carpal_tunnel"",""hand_pain"",""numbness""]",6,6.0,6,20,high_protein,"Repetitive strain injury",45,female,rural_area,"carpal_tunnel_syndrome",spring,morning,sunny,office_worker
+83,user083,2024-02-20T08:15:00Z,"[""back_pain"",""neck_pain"",""headache""]",7,5.5,7,15,balanced,"Poor posture symptoms",51,male,rural_area,"herniated_disc",spring,morning,sunny,office_worker
+84,user084,2024-02-20T09:00:00Z,"[""eye_strain"",""headache"",""fatigue""]",4,7.0,4,30,vegetarian,"Digital eye strain",29,female,rural_area,"none",spring,morning,sunny,student
+85,user085,2024-02-20T10:30:00Z,"[""shoulder_pain"",""arm_pain"",""numbness""]",6,6.5,6,20,balanced,"Repetitive motion injury",48,male,rural_area,"rotator_cuff_injury",spring,morning,sunny,construction
+86,user086,2024-02-20T11:15:00Z,"[""back_pain"",""muscle_weakness"",""fatigue""]",5,7.0,5,25,balanced,"Sedentary lifestyle symptoms",34,female,rural_area,"none",spring,morning,sunny,office_worker
+87,user087,2024-02-20T12:00:00Z,"[""headache"",""stress"",""eye_strain""]",6,6.0,6,20,balanced,"Work-related stress and eye strain",40,male,rural_area,"tension_headaches",spring,afternoon,sunny,office_worker
+88,user088,2024-02-20T13:30:00Z,"[""carpal_tunnel"",""hand_pain"",""numbness""]",5,7.0,5,30,vegan,"Mild carpal tunnel symptoms",27,female,rural_area,"carpal_tunnel_syndrome",spring,afternoon,sunny,student
+89,user089,2024-02-20T14:15:00Z,"[""back_pain"",""neck_pain"",""headache""]",6,6.5,6,20,balanced,"Poor ergonomics symptoms",46,male,rural_area,"herniated_disc",spring,afternoon,sunny,office_worker
+90,user090,2024-02-20T15:00:00Z,"[""eye_strain"",""headache"",""fatigue""]",4,7.5,4,35,balanced,"Digital device overuse",31,female,rural_area,"none",spring,afternoon,sunny,healthcare_worker
+91,user091,2024-05-20T06:30:00Z,"[""heat_stroke"",""confusion"",""dizziness""]",9,3.0,9,0,balanced,"Severe heat stroke symptoms",54,male,rural_area,"none",summer,morning,hot,farming
+92,user092,2024-05-20T07:45:00Z,"[""heat_exhaustion"",""fatigue"",""muscle_cramps""]",7,4.5,7,10,high_protein,"Heat exhaustion from outdoor work",39,female,rural_area,"none",summer,morning,hot,construction
+93,user093,2024-05-20T08:15:00Z,"[""sunburn"",""blisters"",""pain""]",6,6.0,6,20,balanced,"Severe sunburn symptoms",47,male,rural_area,"sensitive_skin",summer,morning,hot,outdoor_worker
+94,user094,2024-05-20T09:00:00Z,"[""heat_rash"",""itching"",""irritation""]",4,7.0,4,30,vegetarian,"Severe heat rash",26,female,rural_area,"sensitive_skin",summer,morning,hot,teacher
+95,user095,2024-05-20T10:30:00Z,"[""chest_pain"",""shortness_of_breath"",""confusion""]",9,3.5,9,0,low_carb,"Heat-induced cardiac emergency",67,male,rural_area,"heart_disease",summer,morning,hot,retired
+96,user096,2024-05-20T11:15:00Z,"[""dehydration"",""dizziness"",""nausea""]",6,5.5,6,15,balanced,"Severe dehydration symptoms",42,female,rural_area,"none",summer,morning,hot,restaurant_worker
+97,user097,2024-05-20T12:00:00Z,"[""heat_exhaustion"",""fatigue"",""muscle_weakness""]",7,4.0,7,5,balanced,"Heat exhaustion symptoms",44,male,rural_area,"chronic_fatigue",summer,afternoon,hot,office_worker
+98,user098,2024-05-20T13:30:00Z,"[""sunburn"",""pain"",""irritation""]",5,6.5,5,25,vegan,"Moderate sunburn",24,female,rural_area,"sensitive_skin",summer,afternoon,hot,student
+99,user099,2024-05-20T14:15:00Z,"[""heat_stroke"",""confusion"",""dizziness""]",8,3.0,8,0,balanced,"Heat stroke symptoms",58,male,rural_area,"none",summer,afternoon,hot,construction
+100,user100,2024-05-20T15:00:00Z,"[""heat_exhaustion"",""fatigue"",""muscle_cramps""]",6,5.0,6,10,balanced,"Heat exhaustion recovery",35,female,rural_area,"none",summer,afternoon,hot,healthcare_worker

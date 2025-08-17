@@ -87,10 +87,31 @@ export class DatabaseService {
   }
 
   async initialize(): Promise<void> {
-    if (this.isInitialized) return;
+    if (this.isInitialized && this.db) {
+      console.log('✅ DatabaseService: Already initialized with valid database');
+      return;
+    }
+
+    // Reset state if we're re-initializing
+    if (this.isInitialized && !this.db) {
+      console.log('⚠️ DatabaseService: Re-initializing due to null database reference');
+      this.isInitialized = false;
+    }
 
     try {
       console.log('💾 DatabaseService: Starting initialization...');
+      
+      // Check if we're on web platform
+      this.isWebPlatform = typeof window !== 'undefined';
+      
+      if (this.isWebPlatform) {
+        console.log('🌐 DatabaseService: Web platform detected, using web storage fallback');
+        this.loadWebStorage();
+        this.db = this.createWebFallbackDatabase();
+        this.isInitialized = true;
+        console.log('✅ DatabaseService: Web storage initialized successfully');
+        return;
+      }
       
       // Initialize encryption keys
       if (this.config.encryption) {
@@ -102,6 +123,11 @@ export class DatabaseService {
       console.log('📂 DatabaseService: Opening database...');
       await this.openDatabase();
 
+      // Verify database is open
+      if (!this.db) {
+        throw new Error('Database failed to open');
+      }
+
       // Create tables
       console.log('🏗️ DatabaseService: Creating tables...');
       await this.createTables();
@@ -112,8 +138,27 @@ export class DatabaseService {
 
       this.isInitialized = true;
       console.log('✅ DatabaseService: Database initialized successfully');
+      
+      // Final verification
+      if (!this.db) {
+        throw new Error('Database reference lost after initialization');
+      }
     } catch (error) {
       console.error('❌ DatabaseService: Database initialization failed:', error);
+      this.isInitialized = false;
+      this.db = null;
+      
+      // If initialization fails, try to use web storage as fallback
+      if (!this.isWebPlatform) {
+        console.log('🔄 DatabaseService: Falling back to web storage...');
+        this.isWebPlatform = true;
+        this.loadWebStorage();
+        this.db = this.createWebFallbackDatabase();
+        this.isInitialized = true;
+        console.log('✅ DatabaseService: Web storage fallback initialized');
+        return;
+      }
+      
       throw error;
     }
   }
@@ -131,13 +176,41 @@ export class DatabaseService {
         console.log('📱 DatabaseService: Native platform detected, using SQLite');
         this.isWebPlatform = false;
         this.db = SQLite.openDatabase(this.config.dbName);
+        
+        // Test the database connection
+        await this.testDatabaseConnection();
       }
     } catch (error) {
-      console.error('❌ DatabaseService: Failed to open database, using fallback');
+      console.error('❌ DatabaseService: Failed to open database, using fallback:', error);
       this.isWebPlatform = true;
       this.db = this.createWebFallbackDatabase();
       this.loadWebStorage();
     }
+  }
+
+  private async testDatabaseConnection(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.db) {
+        reject(new Error('Database not available for testing'));
+        return;
+      }
+
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          'SELECT 1',
+          [],
+          () => {
+            console.log('✅ DatabaseService: Database connection test successful');
+            resolve();
+          },
+          (_, error) => {
+            console.error('❌ DatabaseService: Database connection test failed:', error);
+            reject(error);
+            return false;
+          }
+        );
+      });
+    });
   }
 
   private loadWebStorage(): void {
@@ -748,44 +821,64 @@ export class DatabaseService {
   }
 
   async getUserById(userId: string): Promise<User | null> {
-    if (!this.db) throw new Error('Database not initialized');
+    try {
+      console.log('👤 DatabaseService: Getting user by ID:', userId);
+      
+      if (this.isWebPlatform) {
+        console.log('🌐 DatabaseService: Using web fallback for getUserById');
+        const user = this.webStorage.get(`user_${userId}`);
+        return user || null;
+      }
 
-    return new Promise((resolve, reject) => {
-      this.db!.transaction(tx => {
-        tx.executeSql(
-          'SELECT * FROM users WHERE id = ?',
-          [userId],
-          (_, { rows }) => {
-            if (rows.length === 0) {
-              resolve(null);
-              return;
+      return new Promise((resolve, reject) => {
+        this.db!.transaction(tx => {
+          tx.executeSql(
+            'SELECT * FROM users WHERE id = ?',
+            [userId],
+            (_, result) => {
+              if (result.rows.length > 0) {
+                const user = result.rows.item(0);
+                console.log('✅ DatabaseService: User found:', user.email);
+                resolve(user);
+              } else {
+                console.log('❌ DatabaseService: User not found');
+                resolve(null);
+              }
+            },
+            (_, error) => {
+              console.error('❌ DatabaseService: Error getting user:', error);
+              reject(error);
+              return false;
             }
-
-            const userData = rows.item(0);
-            const user: User = {
-              id: userData.id,
-              email: userData.email,
-              name: userData.name,
-              role: userData.role,
-              age: userData.age,
-              gender: userData.gender,
-              location: userData.location,
-              medicalHistory: userData.medical_history,
-              passwordHash: userData.password_hash,
-              salt: userData.salt,
-              createdAt: userData.created_at,
-              updatedAt: userData.updated_at
-            };
-            resolve(user);
-          },
-          (_, error) => {
-            console.error('Get user failed:', error);
-            reject(error);
-            return false;
-          }
-        );
+          );
+        });
       });
-    });
+    } catch (error) {
+      console.error('❌ DatabaseService: getUserById failed:', error);
+      return null;
+    }
+  }
+
+  async getUserProfile(userId: string): Promise<{ age?: number; gender?: string; location?: string; medicalHistory?: string } | null> {
+    try {
+      console.log('👤 DatabaseService: Getting user profile for:', userId);
+      
+      const user = await this.getUserById(userId);
+      if (!user) {
+        console.log('❌ DatabaseService: User not found for profile');
+        return null;
+      }
+
+      return {
+        age: user.age,
+        gender: user.gender,
+        location: user.location,
+        medicalHistory: user.medicalHistory
+      };
+    } catch (error) {
+      console.error('❌ DatabaseService: getUserProfile failed:', error);
+      return null;
+    }
   }
 
   async updateUser(userId: string, updates: Partial<Omit<User, 'id' | 'passwordHash' | 'salt' | 'createdAt'>>): Promise<boolean> {
@@ -826,7 +919,20 @@ export class DatabaseService {
 
   // Health data methods
   async saveHealthData(data: Omit<HealthData, 'id' | 'createdAt' | 'encrypted'>): Promise<string> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.isInitialized) {
+      console.error('❌ DatabaseService: Database not initialized, attempting to initialize...');
+      try {
+        await this.initialize();
+      } catch (initError) {
+        console.error('❌ DatabaseService: Failed to initialize database:', initError);
+        throw new Error('Database is not properly initialized. Please try again or contact support.');
+      }
+    }
+
+    if (!this.db) {
+      console.error('❌ DatabaseService: Database object is null after initialization');
+      throw new Error('Database connection failed. Please try again or contact support.');
+    }
 
     const id = uuidv4();
     const now = new Date().toISOString();
@@ -851,10 +957,13 @@ export class DatabaseService {
             data.sleep, data.stress, data.exercise, data.diet, encryptedNotes,
             shouldEncrypt ? 1 : 0, now
           ],
-          () => resolve(id),
+          () => {
+            console.log('✅ DatabaseService: Health data saved successfully with ID:', id);
+            resolve(id);
+          },
           (_, error) => {
-            console.error('Save health data failed:', error);
-            reject(error);
+            console.error('❌ DatabaseService: Save health data failed:', error);
+            reject(new Error(`Failed to save health data: ${error.message}`));
             return false;
           }
         );
@@ -863,7 +972,20 @@ export class DatabaseService {
   }
 
   async getHealthData(userId: string, limit?: number): Promise<HealthData[]> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.isInitialized) {
+      console.error('❌ DatabaseService: Database not initialized, attempting to initialize...');
+      try {
+        await this.initialize();
+      } catch (initError) {
+        console.error('❌ DatabaseService: Failed to initialize database:', initError);
+        throw new Error('Database is not properly initialized. Please try again or contact support.');
+      }
+    }
+
+    if (!this.db) {
+      console.error('❌ DatabaseService: Database object is null after initialization');
+      throw new Error('Database connection failed. Please try again or contact support.');
+    }
 
     console.log('📊 DatabaseService: Getting health data for user:', userId);
     console.log('📊 DatabaseService: Limit:', limit);
@@ -902,11 +1024,12 @@ export class DatabaseService {
               healthData.push(data);
             }
             
+            console.log('✅ DatabaseService: Retrieved', healthData.length, 'health records');
             resolve(healthData);
           },
           (_, error) => {
-            console.error('Get health data failed:', error);
-            reject(error);
+            console.error('❌ DatabaseService: Get health data failed:', error);
+            reject(new Error(`Failed to retrieve health data: ${error.message}`));
             return false;
           }
         );
@@ -1138,6 +1261,28 @@ export class DatabaseService {
       this.db = null;
       this.isInitialized = false;
     }
+  }
+
+  /**
+   * Get current database status and health
+   */
+  getDatabaseStatus(): { isInitialized: boolean; isWebPlatform: boolean; hasDatabase: boolean; error?: string } {
+    return {
+      isInitialized: this.isInitialized,
+      isWebPlatform: this.isWebPlatform,
+      hasDatabase: this.db !== null,
+      error: this.isInitialized && !this.db ? 'Database reference is null despite being initialized' : undefined
+    };
+  }
+
+  /**
+   * Force re-initialization of the database
+   */
+  async forceReinitialize(): Promise<void> {
+    console.log('🔄 DatabaseService: Force re-initializing database...');
+    this.isInitialized = false;
+    this.db = null;
+    await this.initialize();
   }
 }
 

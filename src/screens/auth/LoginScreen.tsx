@@ -22,7 +22,7 @@ const LoginScreen = ({ navigation }: any) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
-  const { login, isLoading, createTestUser, register } = useAuth();
+  const { login, isLoading, createTestUser, register, clearStoredSession } = useAuth();
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -297,6 +297,37 @@ const LoginScreen = ({ navigation }: any) => {
             >
               <Text style={styles.debugAuthButtonText}>
                 🧪 Test Auth Directly
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.clearSessionButton}
+              onPress={async () => {
+                console.log('🧹 Clearing stored session data...');
+                try {
+                  await clearStoredSession();
+                  Alert.alert(
+                    '✅ Session Cleared',
+                    'All stored session data has been cleared. You will need to log in again.',
+                    [
+                      {
+                        text: 'OK',
+                        onPress: () => {
+                          setEmail('');
+                          setPassword('');
+                          setLoginSuccess(false);
+                        }
+                      }
+                    ]
+                  );
+                } catch (error) {
+                  console.error('❌ Error clearing session:', error);
+                  Alert.alert('❌ Error', 'Failed to clear session data');
+                }
+              }}
+            >
+              <Text style={styles.clearSessionButtonText}>
+                🧹 Clear Session Data
               </Text>
             </TouchableOpacity>
 
@@ -668,6 +699,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  clearSessionButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    backgroundColor: '#ffebee',
+    borderRadius: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: '#d32f2f',
+  },
+  clearSessionButtonText: {
+    color: '#d32f2f',
+    fontSize: 14,
+    fontWeight: '600',
   },
   debugTestButton: {
     alignItems: 'center',

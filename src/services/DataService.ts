@@ -219,21 +219,90 @@ class DataValidator {
 }
 
 export class DataService {
-  private isInitialized = false;
+  private isInitialized: boolean = false;
+  private initializationPromise: Promise<void> | null = null;
 
+  constructor() {
+    console.log('🔧 DataService: Initializing DataService');
+  }
+
+  /**
+   * Initialize the data service and all dependencies
+   */
   async initialize(): Promise<void> {
-    if (this.isInitialized) return;
+    if (this.isInitialized) {
+      console.log('✅ DataService: Already initialized');
+      return;
+    }
 
+    if (this.initializationPromise) {
+      console.log('⏳ DataService: Initialization already in progress');
+      return this.initializationPromise;
+    }
+
+    this.initializationPromise = this.performInitialization();
+    return this.initializationPromise;
+  }
+
+  private async performInitialization(): Promise<void> {
     try {
-      // Initialize all services
-      await databaseService.initialize();
-      await securityService.initialize();
+      console.log('🔄 DataService: Starting initialization...');
       
+      // Initialize database first with retry logic
+      console.log('💾 DataService: Initializing database...');
+      let dbInitSuccess = false;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (!dbInitSuccess && retryCount < maxRetries) {
+        try {
+          await databaseService.initialize();
+          console.log('✅ DataService: Database initialized successfully');
+          dbInitSuccess = true;
+        } catch (dbError) {
+          retryCount++;
+          console.warn(`⚠️ DataService: Database initialization attempt ${retryCount} failed:`, dbError);
+          
+          if (retryCount >= maxRetries) {
+            console.error('❌ DataService: Database initialization failed after all retries');
+            throw new Error(`Database initialization failed after ${maxRetries} attempts: ${dbError instanceof Error ? dbError.message : String(dbError)}`);
+          }
+          
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+      }
+
+      // Initialize other services
+      console.log('🔐 DataService: Initializing security service...');
+      try {
+        await securityService.initialize();
+        console.log('✅ DataService: Security service initialized');
+      } catch (securityError) {
+        console.warn('⚠️ DataService: Security service initialization failed, but continuing:', securityError);
+        // Continue even if security service fails
+      }
+
+      // Note: ML and NLP services don't require explicit initialization
+      console.log('✅ DataService: ML and NLP services ready');
+
       this.isInitialized = true;
-      console.log('DataService initialized successfully');
+      console.log('🎉 DataService: Initialization complete');
     } catch (error) {
-      console.error('DataService initialization failed:', error);
+      console.error('❌ DataService: Initialization failed:', error);
+      this.isInitialized = false;
+      this.initializationPromise = null;
       throw error;
+    }
+  }
+
+  /**
+   * Ensure the service is initialized before performing operations
+   */
+  private async ensureInitialized(): Promise<void> {
+    if (!this.isInitialized) {
+      console.log('⚠️ DataService: Service not initialized, initializing now...');
+      await this.initialize();
     }
   }
 
@@ -445,6 +514,14 @@ export class DataService {
 
   // Health Data Management
   async saveHealthData(userId: string, healthData: HealthDataInput, processNLP: boolean = true): Promise<string> {
+    // Ensure service is initialized
+    try {
+      await this.ensureInitialized();
+    } catch (initError) {
+      console.error('❌ DataService: Failed to initialize service for saveHealthData:', initError);
+      throw new Error(`Service initialization failed: ${initError instanceof Error ? initError.message : String(initError)}`);
+    }
+
     // Validate input
     const validation = DataValidator.validateHealthData(healthData);
     if (!validation.isValid) {
@@ -452,10 +529,19 @@ export class DataService {
     }
 
     try {
+      console.log('💾 DataService: Saving health data for user:', userId);
+      console.log('📋 DataService: Health data:', validation.sanitizedData);
+
       // Process with NLP if requested
       let nlpAnalysis: NLPAnalysisResult | undefined;
       if (processNLP && validation.sanitizedData.notes) {
-        nlpAnalysis = await nlpService.processText(validation.sanitizedData.notes);
+        try {
+          nlpAnalysis = await nlpService.processText(validation.sanitizedData.notes);
+          console.log('📝 DataService: NLP analysis completed');
+        } catch (nlpError) {
+          console.warn('⚠️ DataService: NLP processing failed:', nlpError);
+          // Continue without NLP analysis
+        }
       }
 
       // Save to database
@@ -471,31 +557,64 @@ export class DataService {
         notes: validation.sanitizedData.notes
       });
 
+      console.log('✅ DataService: Health data saved with ID:', recordId);
+
       // Log action
-      await securityService.logAction(userId, 'health_data_saved', 'health_record', true, { 
-        recordId,
-        severity: validation.sanitizedData.severity,
-        symptomsCount: validation.sanitizedData.symptoms.length 
-      });
+      try {
+        await securityService.logAction(userId, 'health_data_saved', 'health_record', true, { 
+          recordId,
+          severity: validation.sanitizedData.severity,
+          symptomsCount: validation.sanitizedData.symptoms.length 
+        });
+      } catch (logError) {
+        console.warn('⚠️ DataService: Security logging failed:', logError);
+        // Continue even if logging fails
+      }
 
       return recordId;
     } catch (error) {
-      await securityService.logAction(userId, 'health_data_save_failed', 'health_record', false, { 
-        error: error instanceof Error ? error.message : String(error)
-      });
+      console.error('❌ DataService: Health data save failed:', error);
+      
+      // Provide better error messages for common issues
+      if (error instanceof Error) {
+        if (error.message.includes('Database not initialized')) {
+          throw new Error('Database is not properly initialized. Please try again or contact support.');
+        } else if (error.message.includes('database')) {
+          throw new Error('Database error occurred while saving health data. Please try again.');
+        }
+      }
+      
+      // Log failure
+      try {
+        await securityService.logAction(userId, 'health_data_save_failed', 'health_record', false, { 
+          error: error instanceof Error ? error.message : String(error)
+        });
+      } catch (logError) {
+        console.warn('⚠️ DataService: Failure logging failed:', logError);
+      }
+      
       throw error;
     }
   }
 
   async getHealthData(userId: string, limit?: number): Promise<HealthRecord[]> {
     try {
+      await this.ensureInitialized();
+    } catch (initError) {
+      console.error('❌ DataService: Failed to initialize service for getHealthData:', initError);
+      throw new Error(`Service initialization failed: ${initError instanceof Error ? initError.message : String(initError)}`);
+    }
+
+    try {
+      console.log('📊 DataService: Getting health data for user:', userId);
       const dbRecords = await databaseService.getHealthData(userId, limit);
       
+      // Convert database format to HealthRecord format
       const healthRecords: HealthRecord[] = dbRecords.map(record => ({
         id: record.id,
         userId: record.userId,
         timestamp: new Date(record.timestamp),
-        symptoms: JSON.parse(record.symptoms),
+        symptoms: typeof record.symptoms === 'string' ? JSON.parse(record.symptoms) : record.symptoms,
         severity: record.severity,
         behavior: {
           sleep: record.sleep,
@@ -508,15 +627,13 @@ export class DataService {
         encrypted: record.encrypted
       }));
 
-      await securityService.logAction(userId, 'health_data_accessed', 'health_record', true, { 
-        recordCount: healthRecords.length 
-      });
-
+      console.log('✅ DataService: Retrieved', healthRecords.length, 'health records');
       return healthRecords;
     } catch (error) {
-      await securityService.logAction(userId, 'health_data_access_failed', 'health_record', false, { 
-        error: error instanceof Error ? error.message : String(error)
-      });
+      console.error('❌ DataService: Failed to get health data:', error);
+      if (error instanceof Error && error.message.includes('Database not initialized')) {
+        throw new Error('Database is not properly initialized. Please try again or contact support.');
+      }
       throw error;
     }
   }
@@ -685,6 +802,8 @@ export class DataService {
   }
 
   async getChatHistory(userId: string, limit?: number): Promise<ChatMessage[]> {
+    await this.ensureInitialized();
+
     try {
       const dbMessages = await databaseService.getChatMessages(userId, limit);
       
@@ -710,6 +829,8 @@ export class DataService {
 
   // Analytics and Reporting
   async getAnalytics(): Promise<AnalyticsData> {
+    await this.ensureInitialized();
+
     try {
       const stats = await databaseService.getDatabaseStats();
       
@@ -746,6 +867,8 @@ export class DataService {
     chatMessages: ChatMessage[];
     analyses: AnalysisReport[];
   }> {
+    await this.ensureInitialized();
+
     try {
       const user = await databaseService.getUserById(userId);
       if (!user) throw new Error('User not found');
@@ -810,6 +933,8 @@ export class DataService {
   }
 
   async getDatabaseStats(): Promise<{ users: number; healthData: number; insights: number; messages: number }> {
+    await this.ensureInitialized();
+
     try {
       return await databaseService.getDatabaseStats();
     } catch (error) {
@@ -829,6 +954,8 @@ export class DataService {
     security: { score: number; issues: string[]; recommendations: string[] };
     services: { [serviceName: string]: 'healthy' | 'warning' | 'error' };
   }> {
+    await this.ensureInitialized();
+
     try {
       // Check database health
       const dbStats = await databaseService.getDatabaseStats();

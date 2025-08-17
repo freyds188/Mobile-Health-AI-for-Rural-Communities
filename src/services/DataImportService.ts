@@ -4,7 +4,7 @@
  * Converts external training data into your app's data format
  */
 
-import { DatabaseService } from './DatabaseService';
+import { databaseService } from './DatabaseService';
 import DatasetLoader from '../utils/DatasetLoader';
 import { HealthDataInput } from './MachineLearningService';
 
@@ -27,10 +27,9 @@ export interface ImportResult {
 }
 
 export class DataImportService {
-  private databaseService: DatabaseService;
+  private databaseService = databaseService;
   
   constructor() {
-    this.databaseService = new DatabaseService();
   }
 
   /**
@@ -66,7 +65,7 @@ export class DataImportService {
 
     try {
       // Initialize database
-      await this.databaseService.initializeDatabase();
+      await this.databaseService.initialize();
 
       // Load and validate CSV data
       console.log('📊 Loading CSV data...');

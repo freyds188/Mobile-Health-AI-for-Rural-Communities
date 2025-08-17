@@ -90,6 +90,11 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setIsLoading(true);
       console.log('🔄 Loading health data for user:', user.id);
       
+      // Ensure database is initialized before loading
+      console.log('🔧 Ensuring database is initialized...');
+      await dataService.initialize();
+      console.log('✅ Database initialization confirmed');
+      
       // Load health records
       const records = await dataService.getHealthData(user.id);
       console.log('📊 Loaded health records from database:', records.length);
@@ -153,6 +158,11 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       setIsLoading(true);
       console.log('📊 Adding health data for user:', user.id);
       console.log('📋 Health data input:', data);
+      
+      // Ensure database is initialized before saving
+      console.log('🔧 Ensuring database is initialized...');
+      await dataService.initialize();
+      console.log('✅ Database initialization confirmed');
       
       // Prepare health data for database (matching DatabaseService interface)
       const healthDataForDB = {

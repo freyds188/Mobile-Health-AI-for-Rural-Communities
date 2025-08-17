@@ -8,6 +8,7 @@ import { HealthDataProvider } from './src/contexts/HealthDataContext';
 import { ChatbotProvider } from './src/contexts/ChatbotContext';
 import { useAppFonts } from './src/utils/fonts';
 import { View, Text } from 'react-native';
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 // Screens
 import LoginScreen from './src/screens/auth/LoginScreen';
@@ -31,27 +32,29 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <HealthDataProvider>
-          <ChatbotProvider>
-            <NavigationContainer>
-              <Stack.Navigator
-                initialRouteName="Loading"
-                screenOptions={{
-                  headerShown: false,
-                }}
-              >
-                <Stack.Screen name="Loading" component={LoadingScreen} />
-                <Stack.Screen name="Login" component={LoginScreen} />
-                <Stack.Screen name="Register" component={RegisterScreen} />
-                <Stack.Screen name="Main" component={MainTabNavigator} />
-              </Stack.Navigator>
-            </NavigationContainer>
-            <StatusBar style="auto" />
-          </ChatbotProvider>
-        </HealthDataProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <HealthDataProvider>
+            <ChatbotProvider>
+              <NavigationContainer>
+                <Stack.Navigator
+                  initialRouteName="Loading"
+                  screenOptions={{
+                    headerShown: false,
+                  }}
+                >
+                  <Stack.Screen name="Loading" component={LoadingScreen} />
+                  <Stack.Screen name="Login" component={LoginScreen} />
+                  <Stack.Screen name="Register" component={RegisterScreen} />
+                  <Stack.Screen name="Main" component={MainTabNavigator} />
+                </Stack.Navigator>
+              </NavigationContainer>
+              <StatusBar style="auto" />
+            </ChatbotProvider>
+          </HealthDataProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 } 

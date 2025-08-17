@@ -1,13 +1,14 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-
-// Screens
 import DashboardScreen from '../screens/DashboardScreen';
-import ChatbotScreen from '../screens/ChatbotScreen';
 import HealthStackNavigator from './HealthStackNavigator';
-import ProfileScreen from '../screens/ProfileScreen';
 import RiskAssessmentScreen from '../screens/RiskAssessmentScreen';
+import ChatbotScreen from '../screens/ChatbotScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import UserEvaluationScreen from '../screens/UserEvaluationScreen';
+import ITExpertEvaluationScreen from '../screens/ITExpertEvaluationScreen';
+import ModelTrainingScreen from '../screens/ModelTrainingScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -18,68 +19,55 @@ const MainTabNavigator = () => {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
-          if (route.name === 'Home') {
+          if (route.name === 'Dashboard') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Ask AI') {
-            iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-          } else if (route.name === 'Log Health') {
-            iconName = focused ? 'add-circle' : 'add-circle-outline';
+          } else if (route.name === 'Health') {
+            iconName = focused ? 'medical' : 'medical-outline';
           } else if (route.name === 'Risk Assessment') {
             iconName = focused ? 'analytics' : 'analytics-outline';
+          } else if (route.name === 'Chatbot') {
+            iconName = focused ? 'chatbubble' : 'chatbubble-outline';
+          } else if (route.name === 'Evaluation') {
+            iconName = focused ? 'star' : 'star-outline';
+          } else if (route.name === 'Training') {
+            iconName = focused ? 'settings' : 'settings-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           } else {
             iconName = 'help-outline';
           }
 
-          return <Ionicons name={iconName} size={focused ? 32 : 28} color={color} />;
+          return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#2E7D32',
-        tabBarInactiveTintColor: '#666',
-        tabBarLabelStyle: {
-          fontSize: 14,
-          fontWeight: '600',
-          marginTop: 4,
-          marginBottom: 8,
-        },
+        tabBarActiveTintColor: '#007AFF',
+        tabBarInactiveTintColor: 'gray',
         tabBarStyle: {
-          height: 85,
-          paddingTop: 8,
-          paddingBottom: 12,
-          backgroundColor: '#ffffff',
-          borderTopWidth: 2,
-          borderTopColor: '#e8f5e8',
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-          elevation: 10,
+          backgroundColor: 'white',
+          borderTopWidth: 1,
+          borderTopColor: '#E1E5E9',
+          paddingBottom: 5,
+          paddingTop: 5,
+          height: 60,
         },
-        tabBarItemStyle: {
-          paddingVertical: 6,
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
         },
         headerShown: false,
       })}
     >
       <Tab.Screen 
-        name="Home" 
+        name="Dashboard" 
         component={DashboardScreen}
         options={{
-          tabBarLabel: 'Home',
+          tabBarLabel: 'Dashboard',
         }}
       />
       <Tab.Screen 
-        name="Ask AI" 
-        component={ChatbotScreen}
-        options={{
-          tabBarLabel: 'Ask AI',
-        }}
-      />
-      <Tab.Screen 
-        name="Log Health" 
+        name="Health" 
         component={HealthStackNavigator}
         options={{
-          tabBarLabel: 'Log Health',
+          tabBarLabel: 'Health',
         }}
       />
       <Tab.Screen 
@@ -87,6 +75,27 @@ const MainTabNavigator = () => {
         component={RiskAssessmentScreen}
         options={{
           tabBarLabel: 'Risk Assessment',
+        }}
+      />
+      <Tab.Screen 
+        name="Chatbot" 
+        component={ChatbotScreen}
+        options={{
+          tabBarLabel: 'Chatbot',
+        }}
+      />
+      <Tab.Screen 
+        name="Evaluation" 
+        component={UserEvaluationScreen}
+        options={{
+          tabBarLabel: 'Evaluation',
+        }}
+      />
+      <Tab.Screen 
+        name="Training" 
+        component={ModelTrainingScreen}
+        options={{
+          tabBarLabel: 'Training',
         }}
       />
       <Tab.Screen 

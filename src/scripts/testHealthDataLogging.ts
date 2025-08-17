@@ -24,7 +24,7 @@ export async function testHealthDataLogging(): Promise<void> {
   try {
     // Step 1: Initialize database
     console.log('📊 Step 1: Initializing database...');
-    await databaseService.initializeDatabase();
+    await databaseService.initialize();
     console.log('✅ Database initialized');
 
     // Step 2: Create test user if needed

@@ -24,6 +24,7 @@ interface AuthContextType {
   updateProfile: (userData: Partial<User>) => Promise<void>;
   isSessionValid: () => Promise<boolean>;
   createTestUser: () => Promise<void>;
+  clearStoredSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,13 +46,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeAuth();
   }, []);
 
+  const clearStoredSession = async () => {
+    try {
+      console.log('🧹 AuthContext: Clearing stored session data...');
+      await AsyncStorage.removeItem('sessionToken');
+      await AsyncStorage.removeItem('user');
+      setUser(null);
+      setSessionToken(null);
+      console.log('✅ AuthContext: Stored session data cleared');
+    } catch (error) {
+      console.error('❌ AuthContext: Error clearing stored session:', error);
+    }
+  };
+
   const initializeAuth = async () => {
     try {
       console.log('🚀 AuthContext: Starting authentication initialization...');
       
+      // Clear any existing session data to ensure clean login experience
+      await clearStoredSession();
+      
       // Set a timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Initialization timeout')), 10000); // 10 second timeout
+        setTimeout(() => reject(new Error('Initialization timeout')), 5000); // 5 second timeout for web
       });
       
       const initPromise = (async () => {
@@ -60,8 +77,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const initSuccess = await initializeApp();
         
         if (!initSuccess) {
-          console.error('❌ AuthContext: App initialization failed');
-          return false;
+          console.warn('⚠️ AuthContext: App initialization failed, continuing with minimal functionality');
+          // Don't return false, continue with basic functionality
         }
         
         console.log('✅ AuthContext: App services initialized successfully');
@@ -77,22 +94,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (storedToken && storedUser) {
               console.log('📱 AuthContext: Found stored session, validating...');
               
-              // For demo purposes, skip validation on web platform to speed up
-              if (typeof window !== 'undefined') {
-                console.log('🌐 AuthContext: Web platform - skipping session validation for speed');
-                setSessionToken(storedToken);
-                setUser(JSON.parse(storedUser));
-                return;
-              }
-              
-              const isValid = await dataService.validateSession(storedToken);
-              if (isValid) {
-                console.log('✅ AuthContext: Session is valid, restoring user');
-                setSessionToken(storedToken);
-                setUser(JSON.parse(storedUser));
-              } else {
-                console.log('❌ AuthContext: Session invalid, cleaning up');
-                // Clean up invalid session
+              // Always validate session regardless of platform
+              try {
+                const isValid = await dataService.validateSession(storedToken);
+                if (isValid) {
+                  console.log('✅ AuthContext: Session is valid, restoring user');
+                  setSessionToken(storedToken);
+                  setUser(JSON.parse(storedUser));
+                } else {
+                  console.log('❌ AuthContext: Session invalid, cleaning up');
+                  // Clean up invalid session
+                  await AsyncStorage.removeItem('sessionToken');
+                  await AsyncStorage.removeItem('user');
+                }
+              } catch (validationError) {
+                console.warn('⚠️ AuthContext: Session validation failed, cleaning up:', validationError);
+                // Clean up on validation error
                 await AsyncStorage.removeItem('sessionToken');
                 await AsyncStorage.removeItem('user');
               }
@@ -299,7 +316,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     updateProfile,
     isSessionValid,
-    createTestUser
+    createTestUser,
+    clearStoredSession
   };
 
   return (

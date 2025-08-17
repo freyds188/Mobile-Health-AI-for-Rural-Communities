@@ -25,9 +25,16 @@ const HealthLogHistoryScreen = () => {
 
   useEffect(() => {
     if (user) {
+      console.log('📋 HealthLogHistoryScreen: User detected, refreshing data...');
       refreshData();
     }
   }, [user]);
+
+  useEffect(() => {
+    console.log('📋 HealthLogHistoryScreen: Data updated - Total health data:', healthData.length);
+    console.log('📋 HealthLogHistoryScreen: User health data:', userHealthData.length);
+    console.log('📋 HealthLogHistoryScreen: Current user:', user?.id);
+  }, [healthData, userHealthData, user]);
 
   const handleRefresh = async () => {
     setRefreshing(true);

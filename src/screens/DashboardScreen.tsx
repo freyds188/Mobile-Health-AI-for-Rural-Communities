@@ -222,19 +222,45 @@ const DashboardScreen = () => {
 
   // Quick Actions Navigation Functions
   const handleLogSymptoms = () => {
-    console.log('🎯 Navigating to Log Health screen from Quick Actions');
+    console.log('🎯 Navigating to Health screen from Quick Actions');
     
     // Add haptic feedback for better user experience
     Vibration.vibrate(50);
     
     try {
-      navigation.navigate('Log Health' as never);
-      console.log('✅ Successfully navigated to Log Health screen');
+      navigation.navigate('Health' as never);
+      console.log('✅ Successfully navigated to Health screen');
     } catch (error) {
-      console.error('❌ Navigation to Log Health failed:', error);
+      console.error('❌ Navigation to Health failed:', error);
       Alert.alert(
         'Navigation Error', 
         'Could not open health logging screen. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  };
+
+  const handleViewHistory = () => {
+    console.log('🎯 Navigating to Health History screen from Quick Actions');
+    
+    // Add haptic feedback for better user experience
+    Vibration.vibrate(50);
+    
+    try {
+      console.log('🎯 Step 1: Navigating to Health tab...');
+      navigation.navigate('Health' as never);
+      
+      setTimeout(() => {
+        console.log('🎯 Step 2: Navigating to Health History screen...');
+        navigation.navigate('Health History' as never);
+      }, 100);
+      
+      console.log('✅ Successfully initiated navigation to Health History screen');
+    } catch (error) {
+      console.error('❌ Navigation to Health History failed:', error);
+      Alert.alert(
+        'Navigation Error', 
+        'Could not open health history screen. Please try again.',
         [{ text: 'OK' }]
       );
     }
@@ -386,16 +412,26 @@ const DashboardScreen = () => {
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.actionButton}
+                onPress={handleViewHistory}
+                activeOpacity={0.7}
+              >
+                <View style={styles.actionIconContainer}>
+                  <Ionicons name="time" size={32} color="#2E7D32" />
+                </View>
+                <Text style={styles.actionText}>View History</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.actionButtonsRow}>
+              <TouchableOpacity 
+                style={styles.actionButton}
                 onPress={handleAskAI}
                 activeOpacity={0.7}
               >
                 <View style={styles.actionIconContainer}>
                   <Ionicons name="chatbubbles" size={32} color="#2E7D32" />
                 </View>
-                <Text style={styles.actionText}>Ask AI Doctor</Text>
+                <Text style={styles.actionText}>Ask AI</Text>
               </TouchableOpacity>
-            </View>
-            <View style={styles.actionButtonsRow}>
               <TouchableOpacity 
                 style={styles.actionButton}
                 onPress={handleRiskAssessment}
@@ -406,6 +442,8 @@ const DashboardScreen = () => {
                 </View>
                 <Text style={styles.actionText}>Risk Assessment</Text>
               </TouchableOpacity>
+            </View>
+            <View style={styles.actionButtonsRow}>
               <TouchableOpacity 
                 style={[styles.actionButton, styles.emergencyButton]}
                 onPress={handleEmergencyHelp}

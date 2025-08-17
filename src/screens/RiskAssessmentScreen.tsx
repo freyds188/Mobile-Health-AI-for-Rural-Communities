@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,82 +6,103 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
-  RefreshControl,
-  Dimensions
+  ActivityIndicator
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import { riskAssessmentService, RiskAssessment, SymptomPattern } from '../services/RiskAssessmentService';
+import { riskAssessmentService, RiskAssessment } from '../services/RiskAssessmentService';
+import { DatabaseInitializationHelper } from '../utils/DatabaseInitializationHelper';
 import { Ionicons } from '@expo/vector-icons';
 
-const { width } = Dimensions.get('window');
+// Available symptoms for selection
+const AVAILABLE_SYMPTOMS = {
+  'Respiratory': [
+    'Cough', 'Sore throat', 'Runny nose', 'Congestion', 'Fever',
+    'Shortness of breath', 'Chest discomfort', 'Wheezing', 'Chest tightness'
+  ],
+  'Cardiovascular': [
+    'Chest pain', 'Dizziness', 'Irregular heartbeat', 'Swelling in legs',
+    'Fatigue', 'Shortness of breath'
+  ],
+  'Neurological': [
+    'Headache', 'Severe headache', 'Nausea', 'Sensitivity to light',
+    'Sensitivity to sound', 'Dizziness', 'Confusion'
+  ],
+  'Gastrointestinal': [
+    'Stomach pain', 'Nausea', 'Vomiting', 'Loss of appetite', 'Bloating',
+    'Abdominal pain', 'Diarrhea', 'Constipation', 'Gas'
+  ],
+  'Musculoskeletal': [
+    'Joint pain', 'Stiffness', 'Swelling', 'Lower back pain',
+    'Muscle spasms', 'Pain radiating to legs', 'Reduced range of motion'
+  ],
+  'Mental Health': [
+    'Excessive worry', 'Restlessness', 'Difficulty concentrating',
+    'Sleep problems', 'Persistent sadness', 'Loss of interest',
+    'Appetite changes', 'Sleep changes'
+  ],
+  'General': [
+    'Fatigue', 'Weight gain', 'Increased thirst', 'Frequent urination',
+    'Blurred vision', 'Slow healing', 'Insomnia', 'Excessive daytime sleepiness',
+    'Snoring', 'Restless sleep'
+  ]
+};
 
 const RiskAssessmentScreen = () => {
   const { user } = useAuth();
+  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [assessment, setAssessment] = useState<RiskAssessment | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  console.log('🔄 RiskAssessmentScreen: Component rendered, user:', user?.id);
+  const toggleSymptom = (symptom: string) => {
+    setSelectedSymptoms(prev => 
+      prev.includes(symptom) 
+        ? prev.filter(s => s !== symptom)
+        : [...prev, symptom]
+    );
+  };
 
-  useEffect(() => {
-    if (user) {
-      performRiskAssessment();
+  const performSymptomAnalysis = async () => {
+    if (selectedSymptoms.length === 0) {
+      Alert.alert(
+        'No Symptoms Selected',
+        'Please select at least one symptom to analyze.',
+        [{ text: 'OK' }]
+      );
+      return;
     }
-  }, [user]);
 
-  const performRiskAssessment = async () => {
     if (!user) {
       console.log('⚠️ RiskAssessmentScreen: No user found');
       return;
     }
 
-    setLoading(true);
+    setAnalyzing(true);
     try {
-      console.log('🔍 RiskAssessmentScreen: Starting risk assessment for user:', user.id);
-      const result = await riskAssessmentService.performRiskAssessment(user.id);
+      console.log('🔍 RiskAssessmentScreen: Starting symptom analysis for user:', user.id);
+      console.log('🔍 RiskAssessmentScreen: Selected symptoms:', selectedSymptoms);
+      
+      const result = await riskAssessmentService.performRiskAssessment(user.id, selectedSymptoms);
       console.log('📊 RiskAssessmentScreen: Assessment result:', result);
       setAssessment(result);
-      console.log('✅ RiskAssessmentScreen: Risk assessment completed');
+      console.log('✅ RiskAssessmentScreen: Symptom analysis completed');
     } catch (error) {
-      console.error('❌ RiskAssessmentScreen: Risk assessment failed:', error);
-      console.error('❌ RiskAssessmentScreen: Error details:', JSON.stringify(error, null, 2));
+      console.error('❌ RiskAssessmentScreen: Symptom analysis failed:', error);
       setError(error instanceof Error ? error.message : 'Unknown error occurred');
       Alert.alert(
-        'Assessment Error',
-        'Unable to perform risk assessment. Please try again.',
+        'Analysis Error',
+        'Unable to analyze symptoms. Please try again.',
         [{ text: 'OK' }]
       );
     } finally {
-      setLoading(false);
+      setAnalyzing(false);
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await performRiskAssessment();
-    setRefreshing(false);
-  };
-
-  const getRiskLevelColor = (riskLevel: string) => {
-    switch (riskLevel) {
-      case 'critical': return '#FF4444';
-      case 'high': return '#FF8800';
-      case 'medium': return '#FFAA00';
-      case 'low': return '#00AA00';
-      default: return '#666666';
-    }
-  };
-
-  const getRiskLevelIcon = (riskLevel: string) => {
-    switch (riskLevel) {
-      case 'critical': return 'warning';
-      case 'high': return 'alert-circle';
-      case 'medium': return 'information-circle';
-      case 'low': return 'checkmark-circle';
-      default: return 'help-circle';
-    }
+  const resetAssessment = () => {
+    setSelectedSymptoms([]);
+    setAssessment(null);
+    setError(null);
   };
 
   const getUrgencyColor = (urgency: string) => {
@@ -100,22 +121,48 @@ const RiskAssessmentScreen = () => {
     return 'Minimal Risk';
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const initializeDatabase = async () => {
+    try {
+      console.log('🔧 RiskAssessmentScreen: Initializing database...');
+      const success = await DatabaseInitializationHelper.forceInitializeDatabase(3);
+      
+      if (success) {
+        Alert.alert(
+          'Database Initialized',
+          'Database has been successfully initialized. You can now try the risk assessment again.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setError(null);
+                performSymptomAnalysis();
+              }
+            }
+          ]
+        );
+      } else {
+        Alert.alert(
+          'Database Initialization Failed',
+          'Unable to initialize the database. Please try refreshing the page or contact support.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('❌ RiskAssessmentScreen: Database initialization failed:', error);
+      Alert.alert(
+        'Initialization Error',
+        'An error occurred while initializing the database.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
-  if (loading) {
+  if (analyzing) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Analyzing your health patterns...</Text>
-        <Text style={styles.loadingSubtext}>This may take a few moments</Text>
+        <Text style={styles.loadingText}>Analyzing your symptoms...</Text>
+        <Text style={styles.loadingSubtext}>The AI is processing your selected symptoms</Text>
       </View>
     );
   }
@@ -124,289 +171,240 @@ const RiskAssessmentScreen = () => {
     return (
       <View style={styles.errorContainer}>
         <Ionicons name="warning" size={64} color="#FF4444" />
-        <Text style={styles.errorTitle}>Assessment Error</Text>
-        <Text style={styles.errorText}>
-          {error}
-        </Text>
+        <Text style={styles.errorTitle}>Analysis Error</Text>
+        <Text style={styles.errorText}>{error}</Text>
+        
+        {/* Database initialization button for database-related errors */}
+        {error.includes('Database not initialized') && (
+          <TouchableOpacity style={styles.initializeDbButton} onPress={initializeDatabase}>
+            <Text style={styles.initializeDbButtonText}>🔧 Initialize Database</Text>
+          </TouchableOpacity>
+        )}
+        
         <TouchableOpacity style={styles.retryButton} onPress={() => {
           setError(null);
-          performRiskAssessment();
+          performSymptomAnalysis();
         }}>
-          <Text style={styles.retryButtonText}>Retry Assessment</Text>
+          <Text style={styles.retryButtonText}>Retry Analysis</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  if (!assessment) {
+  if (assessment) {
     return (
-      <View style={styles.errorContainer}>
-        <Ionicons name="medical" size={64} color="#666" />
-        <Text style={styles.errorTitle}>No Assessment Available</Text>
-        <Text style={styles.errorText}>
-          Complete your risk assessment to see detailed health insights and potential conditions.
-        </Text>
-        <TouchableOpacity style={styles.retryButton} onPress={performRiskAssessment}>
-          <Text style={styles.retryButtonText}>Start Assessment</Text>
-        </TouchableOpacity>
-      </View>
+      <ScrollView style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <Ionicons name="analytics" size={32} color="#007AFF" />
+            <Text style={styles.headerTitle}>Risk Assessment Results</Text>
+          </View>
+        </View>
+
+        {/* Selected Symptoms Summary */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="medical" size={24} color="#007AFF" />
+            <Text style={styles.sectionTitle}>Your Selected Symptoms</Text>
+          </View>
+          <View style={styles.symptomsSummary}>
+            {selectedSymptoms.map((symptom, index) => (
+              <View key={index} style={styles.symptomTag}>
+                <Text style={styles.symptomTagText}>{symptom}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Potential Conditions */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="medical" size={28} color="#007AFF" />
+            <Text style={styles.sectionTitle}>Potential Health Conditions</Text>
+          </View>
+          {assessment.potentialConditions.length > 0 ? (
+            <>
+              <View style={styles.conditionsSummary}>
+                <Text style={styles.conditionsSummaryText}>
+                  Found {assessment.potentialConditions.length} potential condition{assessment.potentialConditions.length > 1 ? 's' : ''} based on your symptoms
+                </Text>
+              </View>
+              {assessment.potentialConditions.map((condition, index) => (
+                <View key={index} style={styles.conditionCard}>
+                  <View style={styles.conditionHeader}>
+                    <View style={styles.conditionTitleContainer}>
+                      <Text style={styles.conditionNumber}>#{index + 1}</Text>
+                      <Text style={styles.conditionName}>{condition.condition}</Text>
+                    </View>
+                    <View style={[
+                      styles.urgencyBadge,
+                      { backgroundColor: getUrgencyColor(condition.urgency) }
+                    ]}>
+                      <Text style={styles.urgencyText}>{condition.urgency.toUpperCase()}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.conditionDetails}>
+                    <View style={styles.riskIndicator}>
+                      <View style={styles.riskLabel}>
+                        <Text style={styles.riskText}>Risk Level</Text>
+                        <Text style={styles.riskValue}>{getRiskLevelText(condition.probability)}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.conditionMetrics}>
+                      <View style={styles.metricItem}>
+                        <Text style={styles.metricLabel}>Severity:</Text>
+                        <Text style={styles.metricValue}>{condition.severity}</Text>
+                      </View>
+                      <View style={styles.metricItem}>
+                        <Text style={styles.metricLabel}>Risk Level:</Text>
+                        <Text style={styles.metricValue}>{getRiskLevelText(condition.probability)}</Text>
+                      </View>
+                    </View>
+                  </View>
+                  {condition.recommendations.length > 0 && (
+                    <View style={styles.recommendationsContainer}>
+                      <Text style={styles.recommendationsTitle}>Recommendations:</Text>
+                      {condition.recommendations.map((rec, recIndex) => (
+                        <View key={recIndex} style={styles.recommendationItem}>
+                          <Ionicons name="checkmark-circle" size={16} color="#00AA00" />
+                          <Text style={styles.recommendationText}>{rec}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              ))}
+            </>
+          ) : (
+            <View style={styles.noConditionsCard}>
+              <Ionicons name="checkmark-circle" size={64} color="#00AA00" />
+              <Text style={styles.noConditionsTitle}>No Potential Conditions Detected</Text>
+              <Text style={styles.noConditionsText}>
+                Great news! Based on your selected symptoms, the AI did not identify any immediate potential health conditions.
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* New Assessment Button */}
+        <View style={styles.section}>
+          <TouchableOpacity style={styles.newAssessmentButton} onPress={resetAssessment}>
+            <Ionicons name="refresh" size={24} color="white" />
+            <Text style={styles.newAssessmentButtonText}>Start New Assessment</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
     );
   }
 
-  try {
-    return (
-      <ScrollView
-        style={styles.container}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
+  // Symptom Selection Interface
+  return (
+    <ScrollView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <Ionicons name="analytics" size={32} color="#007AFF" />
           <Text style={styles.headerTitle}>Risk Assessment</Text>
           <Text style={styles.headerSubtitle}>
-            {formatDate(assessment.timestamp)}
+            Select the symptoms you're experiencing
           </Text>
         </View>
       </View>
 
-
-      {/* Potential Conditions */}
-      {assessment.potentialConditions.length > 0 && (
+      {/* Selected Symptoms */}
+      {selectedSymptoms.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Potential Conditions</Text>
-          {assessment.potentialConditions.map((condition, index) => (
-            <View key={index} style={styles.conditionCard}>
-              <View style={styles.conditionHeader}>
-                <Text style={styles.conditionName}>{condition.condition}</Text>
-                <View style={[
-                  styles.urgencyBadge,
-                  { backgroundColor: getUrgencyColor(condition.urgency) }
-                ]}>
-                  <Text style={styles.urgencyText}>{condition.urgency.toUpperCase()}</Text>
-                </View>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="checkmark-circle" size={24} color="#00AA00" />
+            <Text style={styles.sectionTitle}>Selected Symptoms ({selectedSymptoms.length})</Text>
+          </View>
+          <View style={styles.selectedSymptomsContainer}>
+            {selectedSymptoms.map((symptom, index) => (
+              <View key={index} style={styles.selectedSymptomTag}>
+                <Text style={styles.selectedSymptomText}>{symptom}</Text>
+                <TouchableOpacity 
+                  style={styles.removeSymptomButton}
+                  onPress={() => toggleSymptom(symptom)}
+                >
+                  <Ionicons name="close" size={16} color="#FF4444" />
+                </TouchableOpacity>
               </View>
-              <View style={styles.conditionDetails}>
-                <View style={styles.riskIndicator}>
-                  <View style={styles.riskLabel}>
-                    <Text style={styles.riskText}>Risk Level</Text>
-                    <Text style={styles.riskValue}>{getRiskLevelText(condition.probability)}</Text>
-                  </View>
-                  <View style={styles.riskBarContainer}>
-                    <View 
-                      style={[
-                        styles.riskBarFill,
-                        { width: `${condition.probability * 100}%` }
-                      ]} 
-                    />
-                  </View>
-                </View>
-                <Text style={styles.severityText}>
-                  Severity: <Text style={styles.severityValue}>{condition.severity}</Text>
-                </Text>
-              </View>
-              {condition.recommendations.length > 0 && (
-                <View style={styles.recommendationsContainer}>
-                  <Text style={styles.recommendationsTitle}>Recommendations:</Text>
-                  {condition.recommendations.map((rec, recIndex) => (
-                    <Text key={recIndex} style={styles.recommendationText}>• {rec}</Text>
-                  ))}
-                </View>
-              )}
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
       )}
 
-      {/* Symptom Patterns */}
-      {assessment.symptomPatterns.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Symptom Patterns</Text>
-          {assessment.symptomPatterns.slice(0, 5).map((pattern, index) => (
-            <View key={index} style={styles.patternCard}>
-              <View style={styles.patternHeader}>
-                <Text style={styles.patternTitle}>Pattern {index + 1}</Text>
-                <View style={[
-                  styles.riskBadge,
-                  { backgroundColor: getRiskLevelColor(pattern.riskLevel) }
-                ]}>
-                  <Text style={styles.riskBadgeText}>{pattern.riskLevel.toUpperCase()}</Text>
-                </View>
-              </View>
-              <View style={styles.patternDetails}>
-                <Text style={styles.symptomsText}>
-                  Symptoms: <Text style={styles.symptomsList}>{pattern.symptoms.join(', ')}</Text>
-                </Text>
-                <View style={styles.patternMetrics}>
-                  <View style={styles.metric}>
-                    <Text style={styles.metricLabel}>Severity</Text>
-                    <Text style={styles.metricValue}>{pattern.severity}/10</Text>
-                  </View>
-                  <View style={styles.metric}>
-                    <Text style={styles.metricLabel}>Frequency</Text>
-                    <Text style={styles.metricValue}>{pattern.frequency}x</Text>
-                  </View>
-                  <View style={styles.metric}>
-                    <Text style={styles.metricLabel}>Duration</Text>
-                    <Text style={styles.metricValue}>{pattern.duration} days</Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Lifestyle Factors */}
+      {/* Symptom Categories */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Lifestyle Assessment</Text>
-        <View style={styles.lifestyleCard}>
-          <View style={styles.lifestyleMetric}>
-            <Text style={styles.lifestyleLabel}>Sleep Quality</Text>
-            <View style={styles.lifestyleBar}>
-              <View 
-                style={[
-                  styles.lifestyleBarFill,
-                  { width: `${(assessment.lifestyleFactors.sleepQuality / 10) * 100}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.sleepQuality.toFixed(1)}/10</Text>
-          </View>
-          <View style={styles.lifestyleMetric}>
-            <Text style={styles.lifestyleLabel}>Stress Level</Text>
-            <View style={styles.lifestyleBar}>
-              <View 
-                style={[
-                  styles.lifestyleBarFill,
-                  { width: `${(assessment.lifestyleFactors.stressLevel / 10) * 100}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.stressLevel.toFixed(1)}/10</Text>
-          </View>
-          <View style={styles.lifestyleMetric}>
-            <Text style={styles.lifestyleLabel}>Exercise Level</Text>
-            <View style={styles.lifestyleBar}>
-              <View 
-                style={[
-                  styles.lifestyleBarFill,
-                  { width: `${(assessment.lifestyleFactors.exerciseLevel / 10) * 100}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.exerciseLevel.toFixed(1)}/10</Text>
-          </View>
-          <View style={styles.lifestyleMetric}>
-            <Text style={styles.lifestyleLabel}>Diet Quality</Text>
-            <View style={styles.lifestyleBar}>
-              <View 
-                style={[
-                  styles.lifestyleBarFill,
-                  { width: `${(assessment.lifestyleFactors.dietQuality / 10) * 100}%` }
-                ]} 
-              />
-            </View>
-            <Text style={styles.lifestyleValue}>{assessment.lifestyleFactors.dietQuality.toFixed(1)}/10</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Trends */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Health Trends</Text>
-        <View style={styles.trendsCard}>
-          <View style={styles.trendItem}>
-            <Text style={styles.trendLabel}>Symptom Frequency</Text>
-            <Text style={[
-              styles.trendValue,
-              { color: assessment.trends.symptomFrequency === 'increasing' ? '#FF4444' : 
-                       assessment.trends.symptomFrequency === 'decreasing' ? '#00AA00' : '#666666' }
-            ]}>
-              {assessment.trends.symptomFrequency}
-            </Text>
-          </View>
-          <View style={styles.trendItem}>
-            <Text style={styles.trendLabel}>Severity Trend</Text>
-            <Text style={[
-              styles.trendValue,
-              { color: assessment.trends.severityTrend === 'increasing' ? '#FF4444' : 
-                       assessment.trends.severityTrend === 'decreasing' ? '#00AA00' : '#666666' }
-            ]}>
-              {assessment.trends.severityTrend}
-            </Text>
-          </View>
-          <View style={styles.trendItem}>
-            <Text style={styles.trendLabel}>Risk Progression</Text>
-            <Text style={[
-              styles.trendValue,
-              { color: assessment.trends.riskProgression === 'worsening' ? '#FF4444' : 
-                       assessment.trends.riskProgression === 'improving' ? '#00AA00' : '#666666' }
-            ]}>
-              {assessment.trends.riskProgression}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Recommendations */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Recommendations</Text>
-        <View style={styles.recommendationsCard}>
-          {assessment.recommendations.map((recommendation, index) => (
-            <View key={index} style={styles.recommendationItem}>
-              <Ionicons name="checkmark-circle" size={20} color="#00AA00" />
-              <Text style={styles.recommendationItemText}>{recommendation}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Next Assessment */}
-      <View style={styles.section}>
-        <View style={styles.nextAssessmentCard}>
-          <Ionicons name="calendar" size={24} color="#007AFF" />
-          <View style={styles.nextAssessmentContent}>
-            <Text style={styles.nextAssessmentTitle}>Next Assessment</Text>
-            <Text style={styles.nextAssessmentDate}>
-              {formatDate(assessment.nextAssessmentDate)}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Disclaimer */}
-      <View style={styles.disclaimer}>
-        <Text style={styles.disclaimerText}>
-          ⚠️ This assessment is for informational purposes only and should not replace professional medical advice. 
-          Always consult with a healthcare provider for proper diagnosis and treatment.
-          {'\n\n'}This tool analyzes patterns in your health data to provide general insights and recommendations. 
-          It is not a diagnostic tool and cannot predict or diagnose medical conditions.
+        <Text style={styles.sectionTitle}>Select Your Symptoms</Text>
+        <Text style={styles.sectionSubtitle}>
+          Tap on the symptoms you're currently experiencing
         </Text>
+        
+        {Object.entries(AVAILABLE_SYMPTOMS).map(([category, symptoms]) => (
+          <View key={category} style={styles.categoryContainer}>
+            <View style={styles.categoryHeader}>
+              <Ionicons 
+                name={
+                  category === 'Respiratory' ? 'medical' :
+                  category === 'Cardiovascular' ? 'heart' :
+                  category === 'Neurological' ? 'medical' :
+                  category === 'Gastrointestinal' ? 'restaurant' :
+                  category === 'Musculoskeletal' ? 'body' :
+                  category === 'Mental Health' ? 'happy' :
+                  'medical'
+                } 
+                size={24} 
+                color="#007AFF" 
+              />
+              <Text style={styles.categoryTitle}>{category}</Text>
+            </View>
+            <View style={styles.symptomsGrid}>
+              {symptoms.map((symptom) => (
+                <TouchableOpacity
+                  key={symptom}
+                  style={[
+                    styles.symptomButton,
+                    selectedSymptoms.includes(symptom) && styles.symptomButtonSelected
+                  ]}
+                  onPress={() => toggleSymptom(symptom)}
+                >
+                  <Text style={[
+                    styles.symptomButtonText,
+                    selectedSymptoms.includes(symptom) && styles.symptomButtonTextSelected
+                  ]}>
+                    {symptom}
+                  </Text>
+                  {selectedSymptoms.includes(symptom) && (
+                    <Ionicons name="checkmark" size={16} color="white" style={styles.checkmark} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ))}
       </View>
+
+      {/* Analyze Button */}
+      {selectedSymptoms.length > 0 && (
+        <View style={styles.section}>
+          <TouchableOpacity 
+            style={styles.analyzeButton} 
+            onPress={performSymptomAnalysis}
+          >
+            <Ionicons name="analytics" size={24} color="white" />
+            <Text style={styles.analyzeButtonText}>
+              Analyze {selectedSymptoms.length} Symptom{selectedSymptoms.length > 1 ? 's' : ''}
+            </Text>
+          </TouchableOpacity>
+          <Text style={styles.analyzeButtonSubtext}>
+            The AI will analyze your selected symptoms and provide potential health insights
+          </Text>
+        </View>
+      )}
     </ScrollView>
   );
-  } catch (renderError) {
-    console.error('❌ RiskAssessmentScreen: Render error:', renderError);
-    return (
-      <View style={styles.errorContainer}>
-        <Ionicons name="bug" size={64} color="#FF4444" />
-        <Text style={styles.errorTitle}>Rendering Error</Text>
-        <Text style={styles.errorText}>
-          An error occurred while displaying the assessment. Please try again.
-        </Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => {
-          setError(null);
-          setAssessment(null);
-          performRiskAssessment();
-        }}>
-          <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
 };
 
 const styles = StyleSheet.create({
@@ -505,47 +503,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
     lineHeight: 26,
   },
-  riskLevelCard: {
-    backgroundColor: 'white',
-    margin: 20,
-    borderRadius: 20,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  riskLevelHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  riskLevelTitle: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginLeft: 16,
-    lineHeight: 34,
-  },
-  riskLevelContent: {
-    alignItems: 'center',
-  },
-  riskLevelText: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    lineHeight: 48,
-  },
-  riskLevelDescription: {
-    fontSize: 18,
-    color: '#444',
-    textAlign: 'center',
-    lineHeight: 28,
-  },
   section: {
     marginHorizontal: 20,
     marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 28,
@@ -553,6 +518,166 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     marginBottom: 20,
     lineHeight: 36,
+  },
+  sectionSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  selectedSymptomsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  selectedSymptomTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+  },
+  selectedSymptomText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#007AFF',
+    marginRight: 8,
+  },
+  removeSymptomButton: {
+    padding: 4,
+  },
+  symptomsSummary: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  symptomTag: {
+    backgroundColor: '#F0F2F5',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  symptomTagText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#444',
+  },
+  categoryContainer: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  categoryTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginLeft: 16,
+    lineHeight: 30,
+  },
+  symptomsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  symptomButton: {
+    backgroundColor: '#F8F9FA',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E1E5E9',
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 120,
+  },
+  symptomButtonSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  symptomButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#444',
+    flex: 1,
+  },
+  symptomButtonTextSelected: {
+    color: 'white',
+  },
+  checkmark: {
+    marginLeft: 8,
+  },
+  analyzeButton: {
+    backgroundColor: '#007AFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  analyzeButtonText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: '700',
+    marginLeft: 12,
+  },
+  analyzeButtonSubtext: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 12,
+    lineHeight: 20,
+  },
+  newAssessmentButton: {
+    backgroundColor: '#28A745',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  newAssessmentButtonText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: '700',
+    marginLeft: 12,
+  },
+  conditionsSummary: {
+    backgroundColor: '#E3F2FD',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  conditionsSummaryText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1976D2',
+    textAlign: 'center',
   },
   conditionCard: {
     backgroundColor: 'white',
@@ -577,6 +702,21 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     flex: 1,
     lineHeight: 30,
+  },
+  conditionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  conditionNumber: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#007AFF',
+    marginRight: 12,
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   urgencyBadge: {
     paddingHorizontal: 16,
@@ -620,14 +760,30 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#007AFF',
   },
-  severityText: {
+  conditionMetrics: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+  },
+  metricItem: {
+    alignItems: 'center',
+  },
+  metricLabel: {
     fontSize: 16,
     color: '#444',
+    marginBottom: 8,
     fontWeight: '600',
+    textAlign: 'center',
   },
-  severityValue: {
+  metricValue: {
+    fontSize: 20,
     fontWeight: '700',
     color: '#1A1A1A',
+    lineHeight: 28,
   },
   recommendationsContainer: {
     borderTopWidth: 3,
@@ -647,202 +803,49 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     marginBottom: 8,
   },
-  patternCard: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  patternHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  patternTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    lineHeight: 30,
-  },
-  riskBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  riskBadgeText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: 'white',
-    lineHeight: 18,
-  },
-  patternDetails: {
-    marginBottom: 16,
-  },
-  symptomsText: {
-    fontSize: 18,
-    color: '#444',
-    marginBottom: 20,
-    lineHeight: 28,
-  },
-  symptomsList: {
-    fontWeight: '700',
-    color: '#1A1A1A',
-  },
-  patternMetrics: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  metric: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  metricLabel: {
-    fontSize: 16,
-    color: '#444',
-    marginBottom: 8,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  metricValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    lineHeight: 28,
-  },
-  lifestyleCard: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  lifestyleMetric: {
-    marginBottom: 24,
-  },
-  lifestyleLabel: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginBottom: 12,
-    lineHeight: 26,
-  },
-  lifestyleBar: {
-    height: 12,
-    backgroundColor: '#E1E5E9',
-    borderRadius: 6,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  lifestyleBarFill: {
-    height: '100%',
-    backgroundColor: '#007AFF',
-  },
-  lifestyleValue: {
-    fontSize: 16,
-    color: '#444',
-    textAlign: 'right',
-    fontWeight: '600',
-  },
-  trendsCard: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  trendItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  trendLabel: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    lineHeight: 26,
-  },
-  trendValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    textTransform: 'capitalize',
-    lineHeight: 26,
-  },
-  recommendationsCard: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-  },
   recommendationItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     marginBottom: 20,
   },
-  recommendationItemText: {
-    fontSize: 18,
-    color: '#1A1A1A',
-    lineHeight: 28,
-    marginLeft: 16,
-    flex: 1,
-    fontWeight: '500',
-  },
-  nextAssessmentCard: {
+  noConditionsCard: {
     backgroundColor: 'white',
     borderRadius: 20,
-    padding: 24,
+    padding: 32,
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
-  nextAssessmentContent: {
-    marginLeft: 20,
-  },
-  nextAssessmentTitle: {
-    fontSize: 20,
+  noConditionsTitle: {
+    fontSize: 24,
     fontWeight: '700',
     color: '#1A1A1A',
-    lineHeight: 28,
+    marginTop: 20,
+    textAlign: 'center',
+    lineHeight: 32,
   },
-  nextAssessmentDate: {
+  noConditionsText: {
     fontSize: 18,
     color: '#444',
-    marginTop: 6,
-    lineHeight: 26,
+    marginTop: 16,
+    textAlign: 'center',
+    lineHeight: 28,
   },
-  disclaimer: {
-    backgroundColor: '#FFF3CD',
-    margin: 20,
-    padding: 24,
-    borderRadius: 16,
-    borderLeftWidth: 8,
-    borderLeftColor: '#FFC107',
+  initializeDbButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    alignItems: 'center',
   },
-  disclaimerText: {
+  initializeDbButtonText: {
+    color: 'white',
     fontSize: 16,
-    color: '#856404',
-    lineHeight: 26,
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });
 
