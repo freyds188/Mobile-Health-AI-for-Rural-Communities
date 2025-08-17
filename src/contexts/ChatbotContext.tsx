@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { dataService } from '../services/DataService';
-import { NLPAnalysisResult } from '../services/NLPService';
+import { databaseService } from '../services/DatabaseService';
+import { advancedNLPService, ProcessedMessage, ChatOption, ConversationState } from '../services/AdvancedNLPService';
+import { chatbotTrainingService } from '../services/ChatbotTrainingService';
 import { useAuth } from './AuthContext';
 
 export interface ChatMessage {
@@ -10,8 +12,10 @@ export interface ChatMessage {
   timestamp: Date;
   symptoms?: string[];
   intent?: string;
-  nlpAnalysis?: NLPAnalysisResult;
+  nlpAnalysis?: ProcessedMessage;
   confidence?: number;
+  options?: ChatOption[];
+  conversationState?: ConversationState;
 }
 
 export interface SymptomData {
@@ -67,10 +71,18 @@ export const ChatbotProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (messages.length === 0) {
         const welcomeMessage: ChatMessage = {
           id: 'welcome-' + Date.now(),
-          text: `Hello ${user.name}! I'm your AI health assistant. I'm here to help you track your symptoms and provide health insights. How are you feeling today?`,
+          text: `Hello ${user.name}! I'm Ada, your health assistant. I'm here to help you understand your symptoms and get the care you need. What symptoms are you experiencing today?`,
           isUser: false,
           timestamp: new Date(),
-          intent: 'greeting'
+          intent: 'greeting',
+          options: [
+            { id: 'symptom_headache', text: 'Headache', type: 'symptom', value: 'headache' },
+            { id: 'symptom_fever', text: 'Fever', type: 'symptom', value: 'fever' },
+            { id: 'symptom_cough', text: 'Cough', type: 'symptom', value: 'cough' },
+            { id: 'symptom_chest_pain', text: 'Chest Pain', type: 'symptom', value: 'chest_pain', color: '#FF3B30' },
+            { id: 'symptom_diarrhea', text: 'Diarrhea', type: 'symptom', value: 'diarrhea' },
+            { id: 'symptom_back_pain', text: 'Back Pain', type: 'symptom', value: 'back_pain' },
+          ]
         };
         setMessages([welcomeMessage]);
       }
@@ -117,35 +129,41 @@ export const ChatbotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsTyping(true);
 
     try {
-      // Process message with enhanced NLP service
-      const result = await dataService.processChatMessage(user.id, text.trim());
+      // Process message with advanced NLP service
+      const processedMessage = await advancedNLPService.processMessage(text.trim());
       
       const botMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: result.response,
+        text: processedMessage.response,
         isUser: false,
         timestamp: new Date(),
-        symptoms: result.extractedSymptoms,
-        intent: result.nlpAnalysis.intent.intent,
-        nlpAnalysis: result.nlpAnalysis,
-        confidence: result.nlpAnalysis.confidence
+        symptoms: processedMessage.entities,
+        intent: processedMessage.intent,
+        nlpAnalysis: processedMessage,
+        confidence: processedMessage.confidence,
+        options: processedMessage.options,
+        conversationState: processedMessage.conversationState
       };
 
       setMessages(prev => [...prev, botMessage]);
 
-      // If symptoms were detected, provide additional guidance
-      if (result.extractedSymptoms && result.extractedSymptoms.length > 0) {
-        setTimeout(() => {
-          const followUpMessage: ChatMessage = {
-            id: (Date.now() + 2).toString(),
-            text: "I've detected some symptoms in your message. Would you like me to help you log this information in your health records for tracking and analysis?",
-            isUser: false,
-            timestamp: new Date(),
-            intent: 'follow_up'
-          };
-          setMessages(prev => [...prev, followUpMessage]);
-        }, 1500);
-      }
+      // Save to database
+      await databaseService.saveChatMessage({
+        userId: user.id,
+        text: text.trim(),
+        isUser: true,
+        timestamp: new Date().toISOString(),
+        symptoms: processedMessage.entities.length > 0 ? JSON.stringify(processedMessage.entities) : undefined,
+        intent: processedMessage.intent
+      });
+
+      await databaseService.saveChatMessage({
+        userId: user.id,
+        text: processedMessage.response,
+        isUser: false,
+        timestamp: new Date().toISOString(),
+        intent: 'response'
+      });
 
     } catch (error) {
       console.error('Error processing message:', error);

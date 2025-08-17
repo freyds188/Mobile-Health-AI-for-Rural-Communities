@@ -2,13 +2,10 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import DashboardScreen from '../screens/DashboardScreen';
-import HealthStackNavigator from './HealthStackNavigator';
 import RiskAssessmentScreen from '../screens/RiskAssessmentScreen';
 import ChatbotScreen from '../screens/ChatbotScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import UserEvaluationScreen from '../screens/UserEvaluationScreen';
-import ITExpertEvaluationScreen from '../screens/ITExpertEvaluationScreen';
-import ModelTrainingScreen from '../screens/ModelTrainingScreen';
+import HealthStackNavigator from './HealthStackNavigator';
 
 const Tab = createBottomTabNavigator();
 
@@ -19,18 +16,14 @@ const MainTabNavigator = () => {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
 
-          if (route.name === 'Dashboard') {
+          if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Health') {
-            iconName = focused ? 'medical' : 'medical-outline';
+          } else if (route.name === 'Log Health') {
+            iconName = focused ? 'add-circle' : 'add-circle-outline';
           } else if (route.name === 'Risk Assessment') {
             iconName = focused ? 'analytics' : 'analytics-outline';
           } else if (route.name === 'Chatbot') {
             iconName = focused ? 'chatbubble' : 'chatbubble-outline';
-          } else if (route.name === 'Evaluation') {
-            iconName = focused ? 'star' : 'star-outline';
-          } else if (route.name === 'Training') {
-            iconName = focused ? 'settings' : 'settings-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           } else {
@@ -57,17 +50,17 @@ const MainTabNavigator = () => {
       })}
     >
       <Tab.Screen 
-        name="Dashboard" 
+        name="Home" 
         component={DashboardScreen}
         options={{
-          tabBarLabel: 'Dashboard',
+          tabBarLabel: 'Home',
         }}
       />
       <Tab.Screen 
-        name="Health" 
+        name="Log Health" 
         component={HealthStackNavigator}
         options={{
-          tabBarLabel: 'Health',
+          tabBarLabel: 'Log Health',
         }}
       />
       <Tab.Screen 
@@ -82,20 +75,6 @@ const MainTabNavigator = () => {
         component={ChatbotScreen}
         options={{
           tabBarLabel: 'Chatbot',
-        }}
-      />
-      <Tab.Screen 
-        name="Evaluation" 
-        component={UserEvaluationScreen}
-        options={{
-          tabBarLabel: 'Evaluation',
-        }}
-      />
-      <Tab.Screen 
-        name="Training" 
-        component={ModelTrainingScreen}
-        options={{
-          tabBarLabel: 'Training',
         }}
       />
       <Tab.Screen 

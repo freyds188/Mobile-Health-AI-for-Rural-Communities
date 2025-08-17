@@ -190,13 +190,6 @@ const HealthLogHistoryScreen = () => {
   if (isLoading && filteredData.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Ionicons name="time" size={32} color="#ffffff" />
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>📋 Health Log History</Text>
-            <Text style={styles.headerSubtitle}>Your health tracking timeline</Text>
-          </View>
-        </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2E7D32" />
           <Text style={styles.loadingText}>Loading your health history...</Text>
@@ -290,7 +283,7 @@ const styles = StyleSheet.create({
     marginTop: 15,
     fontSize: 18,
     color: '#666',
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.body,
   },
   filterContainer: {
     flexDirection: 'row',
@@ -317,7 +310,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#666',
-    fontFamily: fontFamily.semiBold,
+    fontFamily: fontFamily.bodySemiBold,
   },
   filterTextActive: {
     color: '#ffffff',
@@ -333,7 +326,7 @@ const styles = StyleSheet.create({
   statsText: {
     fontSize: 16,
     color: '#666',
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.body,
   },
   logEntry: {
     backgroundColor: '#ffffff',
@@ -369,12 +362,12 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 12,
     fontWeight: 'bold',
-    fontFamily: fontFamily.bold,
+    fontFamily: fontFamily.buttonBold,
   },
   entryDate: {
     fontSize: 16,
     color: '#666',
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.body,
   },
   deleteButton: {
     padding: 8,
@@ -391,7 +384,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    fontFamily: fontFamily.semiBold,
+    fontFamily: fontFamily.bodySemiBold,
   },
   symptomsContainer: {
     flexDirection: 'row',
@@ -409,7 +402,7 @@ const styles = StyleSheet.create({
   symptomText: {
     fontSize: 14,
     color: '#2E7D32',
-    fontFamily: fontFamily.medium,
+    fontFamily: fontFamily.bodyMedium,
   },
   metricsGrid: {
     flexDirection: 'row',
@@ -429,13 +422,13 @@ const styles = StyleSheet.create({
   metricLabel: {
     fontSize: 14,
     color: '#666',
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.body,
   },
   metricValue: {
     fontSize: 14,
     fontWeight: 'bold',
     color: '#333',
-    fontFamily: fontFamily.bold,
+    fontFamily: fontFamily.buttonBold,
     marginLeft: 'auto',
   },
   additionalInfo: {
@@ -449,7 +442,7 @@ const styles = StyleSheet.create({
   dietText: {
     fontSize: 14,
     color: '#666',
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.body,
   },
   notesSection: {
     gap: 5,
@@ -458,13 +451,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
-    fontFamily: fontFamily.semiBold,
+    fontFamily: fontFamily.bodySemiBold,
   },
   notesText: {
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.body,
     fontStyle: 'italic',
   },
   emptyContainer: {
@@ -480,7 +473,7 @@ const styles = StyleSheet.create({
     color: '#333',
     marginTop: 20,
     marginBottom: 10,
-    fontFamily: fontFamily.bold,
+    fontFamily: fontFamily.buttonBold,
   },
   emptyText: {
     fontSize: 16,
@@ -488,7 +481,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 30,
-    fontFamily: fontFamily.regular,
+    fontFamily: fontFamily.body,
   },
   logFirstButton: {
     backgroundColor: '#2E7D32',
@@ -503,7 +496,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
-    fontFamily: fontFamily.bold,
+    fontFamily: fontFamily.buttonBold,
   },
   bottomSpacer: {
     height: 20,

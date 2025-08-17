@@ -44,6 +44,7 @@
     "react-native-date-picker": "^4.3.3",
     "react-native-dotenv": "^3.4.9",
     "react-native-gesture-handler": "~2.12.0",
+    "react-native-gifted-charts": "^1.3.26",
     "react-native-modal": "^13.0.1",
     "react-native-picker-select": "^8.1.0",
     "react-native-progress": "^5.0.1",
@@ -52,7 +53,6 @@
     "react-native-svg": "13.9.0",
     "react-native-vector-icons": "^10.0.2",
     "react-native-web": "~0.19.6",
-    "react-native-gifted-charts": "^1.3.26",
     "sql.js": "^1.8.0",
     "uuid": "^9.0.1"
   },

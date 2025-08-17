@@ -222,16 +222,19 @@ const DashboardScreen = () => {
 
   // Quick Actions Navigation Functions
   const handleLogSymptoms = () => {
-    console.log('🎯 Navigating to Health screen from Quick Actions');
+    console.log('🎯 Navigating to Log Health screen from Quick Actions');
     
     // Add haptic feedback for better user experience
     Vibration.vibrate(50);
     
     try {
-      navigation.navigate('Health' as never);
-      console.log('✅ Successfully navigated to Health screen');
+      console.log('🎯 Navigating to Log Health tab...');
+      // Navigate to the Log Health tab which contains the HealthStackNavigator
+      navigation.navigate('Log Health' as never);
+      
+      console.log('✅ Successfully initiated navigation to Log Health screen');
     } catch (error) {
-      console.error('❌ Navigation to Health failed:', error);
+      console.error('❌ Navigation to Log Health failed:', error);
       Alert.alert(
         'Navigation Error', 
         'Could not open health logging screen. Please try again.',
@@ -431,38 +434,26 @@ const DashboardScreen = () => {
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.actionButton}
-                onPress={handleAskAI}
+                onPress={handleRiskAssessment}
                 activeOpacity={0.7}
               >
                 <View style={styles.actionIconContainer}>
-                  <Ionicons name="chatbubbles" size={32} color="#2E7D32" />
+                  <Ionicons name="analytics" size={32} color="#2E7D32" />
                 </View>
-                <Text style={styles.actionText}>Ask AI Doctor</Text>
+                <Text style={styles.actionText}>Risk Assessment</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.actionButtonsRow}>
               <TouchableOpacity 
                 style={styles.actionButton}
-                onPress={handleAskAI}
+                onPress={() => navigation.navigate('Chatbot' as never)}
                 activeOpacity={0.7}
               >
                 <View style={styles.actionIconContainer}>
-                  <Ionicons name="chatbubbles" size={32} color="#2E7D32" />
+                  <Ionicons name="chatbubble" size={32} color="#2E7D32" />
                 </View>
-                <Text style={styles.actionText}>Ask AI</Text>
+                <Text style={styles.actionText}>Chatbot</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={handleAskAI}
-                activeOpacity={0.7}
-              >
-                <View style={styles.actionIconContainer}>
-                  <Ionicons name="chatbubbles" size={32} color="#2E7D32" />
-                </View>
-                <Text style={styles.actionText}>Ask AI</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.actionButtonsRow}>
               <TouchableOpacity 
                 style={[styles.actionButton, styles.emergencyButton]}
                 onPress={handleEmergencyHelp}
