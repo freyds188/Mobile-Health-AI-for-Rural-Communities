@@ -1,5 +1,27 @@
 import { v4 as uuidv4 } from 'uuid';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+let AsyncStorage: any;
+let fs: any = null;
+let pathMod: any = null;
+const isNodeEnv = typeof window === 'undefined';
+try {
+  if (!isNodeEnv) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    AsyncStorage = require('@react-native-async-storage/async-storage').default;
+  }
+} catch {
+  AsyncStorage = null;
+}
+if (isNodeEnv) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    fs = require('fs');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    pathMod = require('path');
+  } catch {
+    fs = null;
+    pathMod = null;
+  }
+}
 
 // Types and Interfaces
 export interface ConversationState {
@@ -18,6 +40,8 @@ export interface TrainingData {
   response: string;
   confidence: number;
   timestamp: Date;
+  sentimentLabel?: 'negative' | 'neutral' | 'positive';
+  sentimentScore?: number;
 }
 
 export interface IntentData {
@@ -44,6 +68,7 @@ export interface NLPModel {
   modelVersion: string;
   lastTrained: Date;
   accuracy: number;
+  intentNB?: NaiveBayesModel;
 }
 
 export interface ProcessedMessage {
@@ -57,6 +82,8 @@ export interface ProcessedMessage {
   timestamp: Date;
   options?: ChatOption[];
   conversationState?: ConversationState;
+  sentimentLabel?: 'negative' | 'neutral' | 'positive';
+  sentimentScore?: number;
 }
 
 export interface ChatOption {
@@ -77,6 +104,13 @@ export interface TrainingResult {
   modelVersion: string;
 }
 
+export interface NaiveBayesModel {
+  classes: string[];
+  vocabulary: string[];
+  priors: number[]; // log-priors
+  condprob: { [cls: string]: number[] }; // log P(token|class)
+}
+
 class AdvancedNLPService {
   private model: NLPModel;
   private isModelLoaded: boolean = false;
@@ -84,6 +118,7 @@ class AdvancedNLPService {
   private readonly VOCABULARY_SIZE = 10000;
   private readonly VECTOR_DIMENSION = 100;
   private conversationState: ConversationState;
+  private readonly modelFilePath: string | null = isNodeEnv && pathMod ? pathMod.join(process.cwd(), 'nlp-model.json') : null;
 
   constructor() {
     this.model = this.initializeModel();
@@ -101,11 +136,105 @@ class AdvancedNLPService {
             'how are you', 'how do you do', 'nice to meet you'
           ],
           responses: [
-            'Hi! I\'m Ada, your health assistant. I\'m here to help you understand your symptoms and get the care you need. How are you feeling today?',
-            'Hello! I\'m Ada. I can help you assess your symptoms, answer health questions, and guide you to the right care. What\'s on your mind?',
-            'Hi there! I\'m Ada, your personal health companion. I\'m here to listen and help you make informed decisions about your health. How can I assist you today?'
+            'Hello! How can I assist you today?',
+            'Hi! How can I help?',
+            'Welcome! What would you like to discuss?'
           ],
           confidence: 0.9,
+          trainingCount: 0
+        },
+        duration_inquiry: {
+          intent: 'duration_inquiry',
+          patterns: [
+            'how long', 'duration', 'since when', 'when did it start', 'how many days', 'how many hours'
+          ],
+          responses: [
+            'Duration helps determine severity. How long have you had these symptoms?',
+            'Let’s consider duration. When did your symptoms begin?'
+          ],
+          confidence: 0.7,
+          trainingCount: 0
+        },
+        severity_inquiry: {
+          intent: 'severity_inquiry',
+          patterns: [
+            'how bad', 'how severe', '1 to 10', 'scale of 1 to 10', 'severity level'
+          ],
+          responses: [
+            'On a scale of 1 to 10, how severe are your symptoms?',
+            'Please rate your symptom severity from 1 (very mild) to 10 (worst).'
+          ],
+          confidence: 0.7,
+          trainingCount: 0
+        },
+        treatment_inquiry: {
+          intent: 'treatment_inquiry',
+          patterns: [
+            'what should i do', 'treat', 'treatment', 'home remedy', 'medicine', 'medication'
+          ],
+          responses: [
+            'I can share general guidance. For accurate advice, please also share symptoms, severity, and duration.',
+            'Treatment depends on your symptoms and severity. Can you tell me more about how you feel?'
+          ],
+          confidence: 0.7,
+          trainingCount: 0
+        },
+        general_health: {
+          intent: 'general_health',
+          patterns: [
+            'general health', 'health advice', 'tips', 'how to stay healthy', 'prevent getting sick'
+          ],
+          responses: [
+            'Happy to help with general health advice. Are you experiencing any symptoms today?',
+            'I can share prevention and wellness tips. Would you like to start a quick symptom check as well?'
+          ],
+          confidence: 0.7,
+          trainingCount: 0
+        },
+        mental_health_support: {
+          intent: 'mental_health_support',
+          patterns: [
+            'anxiety', 'depression', 'panic', 'stress', 'lonely', 'hopeless', 'insomnia', 'burnout'
+          ],
+          responses: [
+            'Thank you for sharing. Mental health matters. I can offer coping tips and help you consider next steps. Would you like breathing techniques, grounding tips, or to talk about triggers?',
+            'I hear you. For mental health support, small steps can help. Would you like stress-reduction tips or to start a brief check-in?'
+          ],
+          confidence: 0.8,
+          trainingCount: 0
+        },
+        yes: {
+          intent: 'yes',
+          patterns: ['yes', 'yeah', 'yep', 'correct', 'that\'s right'],
+          responses: [
+            'Got it. Let’s continue.',
+            'Thanks for confirming. We’ll proceed.'
+          ],
+          confidence: 0.8,
+          trainingCount: 0
+        },
+        no: {
+          intent: 'no',
+          patterns: ['no', 'nope', 'not really', 'that\'s not it'],
+          responses: [
+            'Thanks for clarifying. Could you rephrase or add a detail?',
+            'Understood. Please tell me more so I can help better.'
+          ],
+          confidence: 0.8,
+          trainingCount: 0
+        },
+        small_talk: {
+          intent: 'small_talk',
+          patterns: [
+            'how are you', 'who are you', 'what can you do', 'tell me about yourself',
+            'thank you', 'thanks', 'appreciate it', 'you are helpful'
+          ],
+          responses: [
+            "I'm here to help you with health questions and symptom checks. How are you feeling today?",
+            "Thanks for asking! I'm focused on your health. What symptoms or questions do you have?",
+            "I can help assess symptoms, suggest next steps, and share general health info. What would you like to talk about?"
+          ],
+          confidence: 0.85,
           trainingCount: 0
         },
         symptom_report: {
@@ -216,7 +345,7 @@ class AdvancedNLPService {
           intent: 'goodbye',
           patterns: [
             'goodbye', 'bye', 'see you', 'talk to you later', 'thanks bye',
-            'thank you bye', 'have a good day', 'take care'
+            'thank you bye', 'have a good day', 'take care', 'thanks', 'thank you'
           ],
           responses: [
             'Take care! Remember these simple ways to stay healthy:\n• Keep emergency contacts easily accessible\n• Maintain a basic first aid kit at home\n• Stay connected with your healthcare providers\n• Don\'t hesitate to seek help when you need it\n\nI\'m always here when you need support. Stay healthy and well!',
@@ -233,6 +362,42 @@ class AdvancedNLPService {
           synonyms: ['head pain', 'migraine', 'head ache', 'head hurting', 'head pounding'],
           category: 'symptom',
           confidence: 0.9
+        },
+        back_pain: {
+          entity: 'back pain',
+          synonyms: ['lower back pain', 'backache', 'back hurt', 'back hurting'],
+          category: 'symptom',
+          confidence: 0.85
+        },
+        shortness_of_breath: {
+          entity: 'shortness of breath',
+          synonyms: ['cannot breathe', 'breathing difficulty', 'dyspnea', 'out of breath'],
+          category: 'symptom',
+          confidence: 0.9
+        },
+        nausea: {
+          entity: 'nausea',
+          synonyms: ['queasy', 'sick to stomach', 'vomit', 'vomiting'],
+          category: 'symptom',
+          confidence: 0.85
+        },
+        dizziness: {
+          entity: 'dizziness',
+          synonyms: ['lightheaded', 'light-headed', 'vertigo', 'faint'],
+          category: 'symptom',
+          confidence: 0.85
+        },
+        joint_pain: {
+          entity: 'joint pain',
+          synonyms: ['knee pain', 'elbow pain', 'arthritic pain', 'arthritis pain'],
+          category: 'symptom',
+          confidence: 0.85
+        },
+        mental_health: {
+          entity: 'mental health',
+          synonyms: ['anxiety', 'depression', 'panic', 'stress', 'lonely', 'hopeless'],
+          category: 'context',
+          confidence: 0.8
         },
         chest_pain: {
           entity: 'chest pain',
@@ -332,7 +497,12 @@ class AdvancedNLPService {
 
   private async loadModel(): Promise<void> {
     try {
-      const savedModel = await AsyncStorage.getItem(this.MODEL_KEY);
+      let savedModel: string | null = null;
+      if (AsyncStorage) {
+        savedModel = await AsyncStorage.getItem(this.MODEL_KEY);
+      } else if (this.modelFilePath && fs && fs.existsSync(this.modelFilePath)) {
+        savedModel = fs.readFileSync(this.modelFilePath, 'utf-8');
+      }
       if (savedModel) {
         const parsedModel = JSON.parse(savedModel);
         // Convert Set back from array
@@ -354,8 +524,14 @@ class AdvancedNLPService {
         ...this.model,
         vocabulary: Array.from(this.model.vocabulary)
       };
-      await AsyncStorage.setItem(this.MODEL_KEY, JSON.stringify(modelToSave));
-      console.log('✅ Advanced NLP Model saved successfully');
+      const serialized = JSON.stringify(modelToSave);
+      if (AsyncStorage) {
+        await AsyncStorage.setItem(this.MODEL_KEY, serialized);
+        console.log('✅ Advanced NLP Model saved successfully');
+      } else if (this.modelFilePath && fs) {
+        fs.writeFileSync(this.modelFilePath, serialized);
+        console.log('✅ Advanced NLP Model saved to file:', this.modelFilePath);
+      }
     } catch (error) {
       console.error('❌ Failed to save NLP model:', error);
     }
@@ -366,7 +542,26 @@ class AdvancedNLPService {
       await this.loadModel();
     }
 
+    // Quick-action short-circuit
+    const qa = this.handleQuickActionIfAny(text);
+    if (qa.handled && qa.response) {
+      const result: ProcessedMessage = {
+        id: uuidv4(),
+        originalText: text,
+        processedText: text,
+        intent: 'action',
+        confidence: 0.9,
+        entities: [],
+        response: qa.response.response,
+        options: qa.response.options,
+        conversationState: { ...this.conversationState },
+        timestamp: new Date()
+      };
+      return result;
+    }
+
     const processedText = this.preprocessText(text);
+    const sentiment = this.analyzeSentiment(processedText);
     const intent = this.classifyIntent(processedText);
     const entities = this.extractEntities(processedText);
 
@@ -481,11 +676,13 @@ class AdvancedNLPService {
       response: responseData.response,
       options: responseData.options,
       conversationState: { ...this.conversationState },
-      timestamp: new Date()
+      timestamp: new Date(),
+      sentimentLabel: sentiment.label,
+      sentimentScore: sentiment.score
     };
 
     // Store for training
-    this.addTrainingData(text, intent.intent, entities, responseData.response, intent.confidence);
+    this.addTrainingData(text, intent.intent, entities, responseData.response, intent.confidence, sentiment);
 
     return result;
   }
@@ -499,6 +696,11 @@ class AdvancedNLPService {
   }
 
   private classifyIntent(text: string): { intent: string; confidence: number } {
+    // Prefer trained Naive Bayes if available
+    const nbResult = this.nbClassify(text);
+    if (nbResult) return nbResult;
+
+    // Fallback to pattern-based scoring
     let bestIntent = 'unknown';
     let bestScore = 0;
 
@@ -544,6 +746,43 @@ class AdvancedNLPService {
     return (score / Math.max(1, intentData.patterns.length)) + trainingBoost;
   }
 
+  private analyzeSentiment(text: string): { label: 'negative' | 'neutral' | 'positive'; score: number } {
+    // Use seeded lexicon if available
+    const modelAny: any = this.model as any;
+    const lexicon: Record<string, number> | undefined = modelAny?.wordVectors?.sentimentLexicon;
+    const intensifiers = ['very', 'extremely', 'really', 'severely', 'quite'];
+    const negations = ['not', "don't", 'no', "isn't", "can't", 'never'];
+
+    const tokens = text.split(/\s+/);
+    let score = 0;
+    for (let i = 0; i < tokens.length; i++) {
+      const w = tokens[i];
+      const prev = tokens[i - 1] || '';
+      const hasIntensifier = intensifiers.includes(prev);
+      const isNegated = negations.includes(prev);
+
+      let wordScore = 0;
+      if (lexicon && Object.prototype.hasOwnProperty.call(lexicon, w)) {
+        wordScore = lexicon[w]; // -1..1
+      } else {
+        // Fallback tiny lexicon
+        const negativeWords = ['worried', 'scared', 'afraid', 'pain', 'hurts', 'bad', 'terrible', 'awful', 'severe', 'anxious', 'sad', 'depressed', 'panic', 'hopeless'];
+        const positiveWords = ['better', 'improved', 'okay', 'fine', 'good', 'relieved', 'calm', 'hope', 'hopeful'];
+        if (negativeWords.includes(w)) wordScore = -0.6;
+        if (positiveWords.includes(w)) wordScore = 0.6;
+      }
+
+      if (wordScore !== 0) {
+        const factor = (hasIntensifier ? 1.5 : 1.0) * (isNegated ? -1 : 1);
+        score += wordScore * factor;
+      }
+    }
+    // Normalize approximately to -1..1
+    const clamped = Math.max(-2, Math.min(2, score)) / 2;
+    const label: 'negative' | 'neutral' | 'positive' = clamped > 0.25 ? 'positive' : clamped < -0.25 ? 'negative' : 'neutral';
+    return { label, score: clamped };
+  }
+
   private extractEntities(text: string): string[] {
     const entities: string[] = [];
     
@@ -566,7 +805,91 @@ class AdvancedNLPService {
     return entities;
   }
 
+  // Lightweight quick-action handling for interactive options
+  private handleQuickActionIfAny(text: string): { handled: boolean; response?: { response: string; options?: ChatOption[] } } {
+    const lower = text.toLowerCase();
+    if (lower.includes('start_assessment')) {
+      this.resetConversationState();
+      this.conversationState.currentStep = 'awaiting_symptoms';
+      return { handled: true, response: this.generateSymptomQuestion() };
+    }
+    if (lower.includes('mh_breathe')) {
+      return {
+        handled: true,
+        response: {
+          response: 'Let’s try a 4-7-8 breathing exercise: Inhale for 4, hold for 7, exhale for 8. Repeat 4 times. Would you like grounding tips too?',
+          options: [
+            { id: 'mh_ground', text: 'Grounding tips', type: 'action', value: 'mh_ground' },
+            { id: 'start_symptom_assessment', text: 'Start symptom check', type: 'action', value: 'start_assessment' }
+          ]
+        }
+      };
+    }
+    if (lower.includes('mh_ground')) {
+      return {
+        handled: true,
+        response: {
+          response: '5-4-3-2-1 grounding: Name 5 things you see, 4 you feel, 3 you hear, 2 you smell, 1 you taste. Want to discuss triggers?',
+          options: [
+            { id: 'mh_triggers', text: 'Discuss triggers', type: 'action', value: 'mh_triggers' },
+            { id: 'start_symptom_assessment', text: 'Start symptom check', type: 'action', value: 'start_assessment' }
+          ]
+        }
+      };
+    }
+    if (lower.includes('new_assessment')) {
+      this.resetConversationState();
+      this.conversationState.currentStep = 'awaiting_symptoms';
+      return { handled: true, response: this.generateSymptomQuestion() };
+    }
+    if (lower.includes('emergency_help')) {
+      return {
+        handled: true,
+        response: {
+          response: '🚨 This requires urgent attention. Please call emergency services immediately. If you lack signal, have someone seek help now. Keep the person calm and still. Do not attempt long-distance travel. Would you like to start a new assessment?',
+          options: [
+            { id: 'action_new_assessment', text: 'New Assessment', type: 'action', value: 'new_assessment' }
+          ]
+        }
+      };
+    }
+    if (lower.includes('log_assessment')) {
+      return {
+        handled: true,
+        response: {
+          response: '📘 I will save this assessment to your health log. You can start a new assessment anytime.',
+          options: [
+            { id: 'action_new_assessment', text: 'New Assessment', type: 'action', value: 'new_assessment' }
+          ]
+        }
+      };
+    }
+    return { handled: false };
+  }
+
   private generateResponse(intent: { intent: string; confidence: number }, entities: string[], text: string): { response: string; options?: ChatOption[] } {
+    // Advice generation for advice-like intents
+    if (['treatment_inquiry', 'general_health', 'health_inquiry', 'preventive_care'].includes(intent.intent)) {
+      try {
+        // Dynamic import to avoid circular deps
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { adviceService } = require('./AdviceService');
+        const advice = adviceService.generateAdvice({
+          intent: intent.intent,
+          entities,
+          severity: this.conversationState.collectedSeverity,
+          durationText: this.conversationState.collectedDuration
+        });
+        const options: ChatOption[] = [
+          { id: 'start_assessment', text: 'Start symptom check', type: 'action', value: 'start_assessment' },
+          { id: 'clarify_add_symptom', text: 'Add symptom', type: 'symptom', value: 'other' },
+          { id: 'clarify_severity', text: 'Share severity', type: 'severity', value: 5 },
+        ];
+        return { response: advice.text, options };
+      } catch (e) {
+        // Fall through to default handling on failure
+      }
+    }
     const intentData = this.model.intents[intent.intent];
     
     if (!intentData || intentData.responses.length === 0) {
@@ -584,14 +907,60 @@ class AdvancedNLPService {
       responseIndex = Math.floor(Math.random() * intentData.responses.length);
     }
 
-    let response = intentData.responses[responseIndex];
+    // Empathy prefix for a more conversational tone
+    const empathy = this.buildEmpathyPrefix(text, intent.intent);
+    let response = `${empathy}${intentData.responses[responseIndex]}`;
     let options: ChatOption[] = [];
 
     // Add interactive options based on intent
     if (intent.intent === 'symptom_report') {
-      options = this.generateSymptomOptions();
+      options = [
+        ...this.generateSymptomOptions(),
+        ...this.generateClarifyingOptions()
+      ];
+      response += '\n\nJust to better understand your situation:'+
+        '\n• How intense is it (1-10)?' +
+        '\n• When did it start?' +
+        '\n• Anything that makes it better or worse?';
+    } else if (intent.intent === 'severity_inquiry') {
+      options = [
+        ...this.generatePainOptions(),
+        ...this.generateClarifyingOptions()
+      ];
+    } else if (intent.intent === 'duration_inquiry') {
+      options = [
+        { id: 'duration_short', text: 'Less than 1 hour', type: 'duration', value: 'less than 1 hour' },
+        { id: 'duration_few_hours', text: 'A few hours', type: 'duration', value: 'a few hours' },
+        { id: 'duration_days', text: 'A few days', type: 'duration', value: 'a few days' }
+      ];
+    } else if (intent.intent === 'treatment_inquiry') {
+      options = [
+        { id: 'start_assessment', text: 'Start symptom check', type: 'action', value: 'start_assessment' },
+        { id: 'share_severity', text: 'Share severity (1-10)', type: 'severity', value: 5 }
+      ];
+    } else if (intent.intent === 'mental_health_support') {
+      options = [
+        { id: 'mh_breathe', text: 'Breathing exercise', type: 'action', value: 'mh_breathe' },
+        { id: 'mh_ground', text: 'Grounding tips', type: 'action', value: 'mh_ground' },
+        { id: 'mh_triggers', text: 'Discuss triggers', type: 'action', value: 'mh_triggers' }
+      ];
     } else if (intent.intent === 'pain_assessment') {
-      options = this.generatePainOptions();
+      options = [
+        ...this.generatePainOptions(),
+        ...this.generateClarifyingOptions()
+      ];
+    } else if (intent.intent === 'small_talk' || intent.intent === 'greeting') {
+      options = [
+        { id: 'start_symptom_assessment', text: 'Start symptom check', type: 'action', value: 'start_assessment' },
+        { id: 'ask_preventive', text: 'Preventive tips', type: 'action', value: 'preventive_care' },
+      ];
+    } else if (intent.intent === 'yes' || intent.intent === 'no') {
+      // Keep context by nudging back to assessment
+      options = [
+        { id: 'clarify_add_symptom', text: 'Add symptom', type: 'symptom', value: 'other' },
+        { id: 'clarify_severity', text: 'Share severity', type: 'severity', value: 5 },
+        { id: 'clarify_duration', text: 'Share duration', type: 'duration', value: 'a few hours' }
+      ];
     }
 
     // Personalize response based on entities
@@ -599,7 +968,38 @@ class AdvancedNLPService {
       response = this.personalizeResponse(response, entities);
     }
 
+    // Add reflective confirmation and yes/no options when confidence is low
+    if (intent.confidence < 0.5 && intent.intent !== 'greeting' && intent.intent !== 'goodbye') {
+      response += `\n\nJust to confirm, are we talking about ${entities.length > 0 ? entities.join(', ') : 'these symptoms'}?`;
+      options = [...(options || []), ...this.generateYesNoOptions()];
+    }
+
     return { response, options };
+  }
+
+  private buildEmpathyPrefix(text: string, intent: string): string {
+    const sentiment = this.analyzeSentiment(text);
+    if (intent === 'greeting') return '';
+    if (intent === 'goodbye') return '';
+    if (sentiment.label === 'negative') return 'I\'m sorry you\'re going through this. ';
+    if (sentiment.label === 'positive') return 'That\'s encouraging to hear. ';
+    return 'Thanks for sharing this. ';
+  }
+
+  private generateClarifyingOptions(): ChatOption[] {
+    return [
+      { id: 'clarify_add_symptom', text: 'Add another symptom', type: 'symptom', value: 'other' },
+      { id: 'clarify_severity', text: 'Rate severity (1-10)', type: 'severity', value: 5 },
+      { id: 'clarify_duration', text: 'Specify duration', type: 'duration', value: 'a few hours' },
+      { id: 'clarify_triggers', text: 'Mention triggers', type: 'action', value: 'mention_triggers' }
+    ];
+  }
+
+  private generateYesNoOptions(): ChatOption[] {
+    return [
+      { id: 'confirm_yes', text: 'Yes', type: 'action', value: 'yes' },
+      { id: 'confirm_no', text: 'No', type: 'action', value: 'no' }
+    ];
   }
 
   private generateSymptomOptions(): ChatOption[] {
@@ -789,7 +1189,7 @@ class AdvancedNLPService {
     return personalized;
   }
 
-  private addTrainingData(input: string, intent: string, entities: string[], response: string, confidence: number): void {
+  private addTrainingData(input: string, intent: string, entities: string[], response: string, confidence: number, sentiment?: { label: 'negative' | 'neutral' | 'positive'; score: number }): void {
     const trainingData: TrainingData = {
       id: uuidv4(),
       input,
@@ -797,7 +1197,9 @@ class AdvancedNLPService {
       entities,
       response,
       confidence,
-      timestamp: new Date()
+      timestamp: new Date(),
+      sentimentLabel: sentiment?.label,
+      sentimentScore: sentiment?.score
     };
 
     this.model.trainingData.push(trainingData);
@@ -858,6 +1260,9 @@ class AdvancedNLPService {
       this.model.lastTrained = new Date();
       this.model.modelVersion = this.incrementVersion(this.model.modelVersion);
 
+      // Train a Naive Bayes intent classifier from training data
+      this.model.intentNB = this.trainNaiveBayesClassifier(dataToTrain);
+
       // Save updated model
       await this.saveModel();
 
@@ -912,6 +1317,102 @@ class AdvancedNLPService {
         };
       }
     }
+  }
+
+  // ==========================
+  // Naive Bayes Intent Model
+  // ==========================
+  private tokenize(text: string): string[] {
+    return text
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean);
+  }
+
+  private buildVocabulary(samples: TrainingData[]): string[] {
+    const vocabSet = new Set<string>();
+    for (const s of samples) {
+      for (const w of this.tokenize(this.preprocessText(s.input))) {
+        vocabSet.add(w);
+      }
+    }
+    return Array.from(vocabSet);
+  }
+
+  private vectorize(text: string, vocabulary: string[]): number[] {
+    const counts = new Array(vocabulary.length).fill(0);
+    const tokens = this.tokenize(this.preprocessText(text));
+    for (const t of tokens) {
+      const idx = vocabulary.indexOf(t);
+      if (idx >= 0) counts[idx] += 1;
+    }
+    return counts;
+  }
+
+  private trainNaiveBayesClassifier(data: TrainingData[]): NaiveBayesModel {
+    const classes = Array.from(new Set(data.map(d => d.intent)));
+    const vocabulary = this.buildVocabulary(data);
+    const classDocCounts: { [c: string]: number } = {};
+    const classTokenCounts: { [c: string]: number } = {};
+    const condCounts: { [c: string]: number[] } = {};
+
+    classes.forEach(c => {
+      classDocCounts[c] = 0;
+      classTokenCounts[c] = 0;
+      condCounts[c] = new Array(vocabulary.length).fill(0);
+    });
+
+    for (const sample of data) {
+      classDocCounts[sample.intent] += 1;
+      const vec = this.vectorize(sample.input, vocabulary);
+      for (let i = 0; i < vocabulary.length; i++) {
+        const count = vec[i];
+        if (count > 0) {
+          condCounts[sample.intent][i] += count;
+          classTokenCounts[sample.intent] += count;
+        }
+      }
+    }
+
+    const priors = classes.map(c => Math.log((classDocCounts[c] + 1) / (data.length + classes.length)));
+    const condprob: { [c: string]: number[] } = {};
+    classes.forEach((c, ci) => {
+      const denom = classTokenCounts[c] + vocabulary.length; // Laplace smoothing
+      condprob[c] = condCounts[c].map(cnt => Math.log((cnt + 1) / denom));
+    });
+
+    return { classes, vocabulary, priors, condprob };
+  }
+
+  private nbClassify(text: string): { intent: string; confidence: number } | null {
+    const nb = this.model.intentNB;
+    if (!nb) return null;
+
+    const vec = this.vectorize(text, nb.vocabulary);
+    let bestIdx = 0;
+    let bestScore = -Infinity;
+    const scores: number[] = [];
+    for (let c = 0; c < nb.classes.length; c++) {
+      let score = nb.priors[c];
+      const cls = nb.classes[c];
+      for (let i = 0; i < nb.vocabulary.length; i++) {
+        const count = vec[i];
+        if (count > 0) score += count * nb.condprob[cls][i];
+      }
+      scores.push(score);
+      if (score > bestScore) {
+        bestScore = score;
+        bestIdx = c;
+      }
+    }
+
+    // Convert log-scores to pseudo-confidence via softmax over top-2
+    const max = Math.max(...scores);
+    const expScores = scores.map(s => Math.exp(s - max));
+    const sum = expScores.reduce((a, b) => a + b, 0);
+    const confidence = Math.min(0.95, Math.max(0.1, expScores[bestIdx] / (sum || 1)));
+    return { intent: nb.classes[bestIdx], confidence };
   }
 
   private incrementVersion(version: string): string {

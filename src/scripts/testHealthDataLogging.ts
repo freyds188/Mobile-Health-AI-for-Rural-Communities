@@ -29,12 +29,11 @@ export async function testHealthDataLogging(): Promise<void> {
 
     // Step 2: Create test user if needed
     console.log('\n👤 Step 2: Setting up test user...');
-    const testUserId = 'test_user_health_logging';
+    let testUserId = 'test_user_health_logging';
     
     try {
       // Try to create a test user
-      await databaseService.createUser({
-        id: testUserId,
+      const createdUser = await databaseService.createUser({
         email: 'test@health.local',
         name: 'Health Test User',
         password: 'TestPassword123!',
@@ -43,9 +42,20 @@ export async function testHealthDataLogging(): Promise<void> {
         gender: 'other',
         location: 'Test Rural Area'
       });
+      testUserId = createdUser.id;
       console.log('✅ Test user created');
     } catch (error) {
       console.log('ℹ️ Test user may already exist:', error);
+      // Attempt to find existing user ID by email if available in DatabaseService
+      try {
+        const users = await (databaseService as any).getAllUsers?.();
+        if (Array.isArray(users)) {
+          const existing = users.find((u: any) => u.email === 'test@health.local');
+          if (existing?.id) {
+            testUserId = existing.id;
+          }
+        }
+      } catch {}
     }
 
     // Step 3: Test health data saving

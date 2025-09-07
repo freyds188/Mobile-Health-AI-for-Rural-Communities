@@ -1,60 +1,94 @@
 import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * FeatureVector: Represents processed health data ready for machine learning
+ * - Contains numerical features extracted from raw health data
+ * - Used as input for clustering and analysis algorithms
+ */
 export interface FeatureVector {
-  id: string;
-  userId: string;
-  timestamp: Date;
-  features: number[];
-  featureNames: string[];
-  rawData: any;
+  id: string;              // Unique identifier for this feature vector
+  userId: string;          // User who this data belongs to
+  timestamp: Date;         // When this data was collected
+  features: number[];      // Numerical features for ML algorithms
+  featureNames: string[];  // Names of each feature (for interpretability)
+  rawData: any;           // Original health data (for reference)
 }
 
+/**
+ * ClusterResult: Represents a single cluster from K-means clustering
+ * - Contains all data points assigned to this cluster
+ * - Includes quality metrics for cluster evaluation
+ */
 export interface ClusterResult {
-  clusterId: number;
-  centroid: number[];
-  members: FeatureVector[];
-  inertia: number;
-  silhouetteScore: number;
+  clusterId: number;           // Unique identifier for this cluster (0, 1, 2, etc.)
+  centroid: number[];          // Center point of the cluster (average of all members)
+  members: FeatureVector[];    // All data points assigned to this cluster
+  inertia: number;             // How tight the cluster is (lower = tighter)
+  silhouetteScore: number;     // How well-separated the cluster is (-1 to +1)
 }
 
+/**
+ * MLAnalysisResult: Complete result from machine learning analysis
+ * - Contains all clustering results, risk assessment, and recommendations
+ * - This is the main output that gets sent to the user interface
+ */
 export interface MLAnalysisResult {
-  id: string;
-  userId: string;
-  timestamp: Date;
-  algorithm: string;
-  version: string;
-  clusters: ClusterResult[];
-  optimalK: number;
-  riskLevel: 'low' | 'medium' | 'high';
-  patterns: string[];
-  recommendations: string[];
-  confidence: number;
-  featureImportance: { [key: string]: number };
-  anomalies: FeatureVector[];
+  id: string;                                    // Unique identifier for this analysis
+  userId: string;                                // User who this analysis is for
+  timestamp: Date;                               // When this analysis was performed
+  algorithm: string;                             // Which ML algorithm was used
+  version: string;                               // Version of the ML service
+  clusters: ClusterResult[];                     // All clusters found in the data
+  optimalK: number;                              // Best number of clusters found
+  riskLevel: 'low' | 'medium' | 'high';         // Overall health risk assessment
+  patterns: string[];                            // Health patterns discovered
+  recommendations: string[];                     // Actionable health recommendations
+  confidence: number;                            // How confident we are (0.0 to 1.0)
+  featureImportance: { [key: string]: number };  // Which features matter most
+  anomalies: FeatureVector[];                    // Unusual health patterns detected
 }
 
+/**
+ * HealthDataInput: Raw health data from user input
+ * - This is what users provide through the app interface
+ * - Gets processed into FeatureVector for machine learning
+ */
 export interface HealthDataInput {
-  symptoms: string[];
-  severity: number;
-  sleep: number;
-  stress: number;
-  exercise: number;
-  diet: string;
-  notes: string;
-  timestamp: Date;
+  symptoms: string[];        // List of symptoms (e.g., ["headache", "fatigue"])
+  severity: number;          // Overall symptom severity (1-10 scale)
+  sleep: number;             // Hours of sleep last night (0-12)
+  stress: number;            // Stress level (1-10 scale)
+  exercise: number;          // Minutes of exercise today (0-300)
+  diet: string;              // Description of recent diet
+  notes: string;             // Additional health notes
+  timestamp: Date;           // When this data was recorded
 }
 
-class AdvancedKMeans {
-  private k: number;
-  private maxIterations: number;
-  private tolerance: number;
-  private initMethod: 'random' | 'kmeans++';
 
+/**
+ * AdvancedKMeans: Implements K-means++ clustering algorithm
+ * - K-means++ is an improved version of K-means with better initialization
+ * - Automatically finds optimal cluster centers
+ * - Includes quality metrics (silhouette score, inertia)
+ */
+class AdvancedKMeans {
+  private k: number;                              // Number of clusters to find
+  private maxIterations: number;                  // Maximum iterations to prevent infinite loops
+  private tolerance: number;                      // Convergence threshold (when to stop)
+  private initMethod: 'random' | 'kmeans++';     // How to initialize cluster centers
+
+  /**
+   * Constructor: Sets up K-means clustering parameters
+   * @param k - Number of clusters (default: 3)
+   * @param maxIterations - Max iterations (default: 300)
+   * @param tolerance - Convergence threshold (default: 0.0001)
+   * @param initMethod - Initialization method (default: 'kmeans++')
+   */
   constructor(
-    k: number = 3,
-    maxIterations: number = 300,
-    tolerance: number = 1e-4,
-    initMethod: 'random' | 'kmeans++' = 'kmeans++'
+    k: number = 3, // Default number of clusters
+    maxIterations: number = 300, // Default max iterations
+    tolerance: number = 1e-4, // Default convergence threshold
+    initMethod: 'random' | 'kmeans++' = 'kmeans++' // initialization method
   ) {
     this.k = k;
     this.maxIterations = maxIterations;
@@ -62,16 +96,31 @@ class AdvancedKMeans {
     this.initMethod = initMethod;
   }
 
+  
+  /**
+   * Euclidean Distance: Standard distance between two points
+   * Formula: √(Σ(x₁-y₁)² + (x₂-y₂)² + ... + (xₙ-yₙ)²)
+   */
   private euclideanDistance(point1: number[], point2: number[]): number {
     return Math.sqrt(
       point1.reduce((sum, val, i) => sum + Math.pow(val - point2[i], 2), 0)
     );
   }
 
+  /**
+   * Manhattan Distance: Sum of absolute differences
+   * Formula: |x₁-y₁| + |x₂-y₂| + ... + |xₙ-yₙ|
+   * Best for: High-dimensional data with outliers
+   */
   private manhattanDistance(point1: number[], point2: number[]): number {
     return point1.reduce((sum, val, i) => sum + Math.abs(val - point2[i]), 0);
   }
 
+  /**
+   * Cosine Distance: Measures angle between vectors
+   * Formula: 1 - (A·B) / (||A|| × ||B||)
+   * Best for: Text data, when magnitude doesn't matter
+   */
   private cosineDistance(point1: number[], point2: number[]): number {
     const dotProduct = point1.reduce((sum, val, i) => sum + val * point2[i], 0);
     const magnitude1 = Math.sqrt(point1.reduce((sum, val) => sum + val * val, 0));
@@ -81,35 +130,49 @@ class AdvancedKMeans {
     return 1 - (dotProduct / (magnitude1 * magnitude2));
   }
 
+
+  /**
+   * K-Means++ Initialization: Smart way to choose initial cluster centers
+   * - Step 1: Choose first centroid randomly
+   * - Step 2: Choose next centroids with probability proportional to distance²
+   * - Result: Better convergence and cluster quality than random initialization
+   */
   private initializeCentroids(data: number[][], method: 'random' | 'kmeans++' = 'kmeans++'): number[][] {
     const centroids: number[][] = [];
     const dataLength = data.length;
     const dimensions = data[0].length;
 
     if (method === 'random') {
+      // Traditional random initialization (less effective)
       for (let i = 0; i < this.k; i++) {
         const randomIndex = Math.floor(Math.random() * dataLength);
         centroids.push([...data[randomIndex]]);
       }
     } else if (method === 'kmeans++') {
       // K-means++ initialization for better convergence
+      
+      // Step 1: Choose first centroid uniformly at random
       const randomIndex = Math.floor(Math.random() * dataLength);
       centroids.push([...data[randomIndex]]);
 
+      // Step 2: Choose remaining centroids using weighted probability
       for (let i = 1; i < this.k; i++) {
         const distances: number[] = [];
         let totalDistance = 0;
 
+        // Calculate minimum distance to existing centroids for each point
         for (const point of data) {
           let minDistance = Infinity;
           for (const centroid of centroids) {
             const distance = this.euclideanDistance(point, centroid);
             minDistance = Math.min(minDistance, distance);
           }
+          // Square the distance for weighted selection (key to K-means++)
           distances.push(minDistance * minDistance);
           totalDistance += minDistance * minDistance;
         }
 
+        // Select next centroid with probability proportional to distance squared
         const random = Math.random() * totalDistance;
         let cumulativeDistance = 0;
         
@@ -126,6 +189,14 @@ class AdvancedKMeans {
     return centroids;
   }
 
+  // ============================================================================
+  // CLUSTER ASSIGNMENT
+  // ============================================================================
+  /**
+   * Assigns each data point to the nearest centroid
+   * - Finds the closest cluster center for each point
+   * - Returns array of cluster assignments (0, 1, 2, etc.)
+   */
   private assignToClusters(data: number[][], centroids: number[][]): number[] {
     const assignments: number[] = [];
 
@@ -133,6 +204,7 @@ class AdvancedKMeans {
       let minDistance = Infinity;
       let clusterIndex = 0;
 
+      // Find the closest centroid to this point
       for (let i = 0; i < centroids.length; i++) {
         const distance = this.euclideanDistance(point, centroids[i]);
         if (distance < minDistance) {
@@ -147,11 +219,20 @@ class AdvancedKMeans {
     return assignments;
   }
 
+  // ============================================================================
+  // CENTROID UPDATE
+  // ============================================================================
+  /**
+   * Updates centroids by computing the mean of all points in each cluster
+   * - Calculates new center point for each cluster
+   * - Handles empty clusters by reinitializing with random point
+   */
   private updateCentroids(data: number[][], assignments: number[]): number[][] {
     const centroids: number[][] = [];
     const dimensions = data[0].length;
 
     for (let i = 0; i < this.k; i++) {
+      // Get all points assigned to this cluster
       const clusterPoints = data.filter((_, index) => assignments[index] === i);
 
       if (clusterPoints.length === 0) {
@@ -159,14 +240,17 @@ class AdvancedKMeans {
         const randomIndex = Math.floor(Math.random() * data.length);
         centroids.push([...data[randomIndex]]);
       } else {
+        // Calculate new centroid as mean of all cluster points
         const centroid = new Array(dimensions).fill(0);
 
+        // Sum all points in the cluster
         for (const point of clusterPoints) {
           for (let j = 0; j < dimensions; j++) {
             centroid[j] += point[j];
           }
         }
 
+        // Divide by number of points to get mean (new centroid)
         for (let j = 0; j < dimensions; j++) {
           centroid[j] /= clusterPoints.length;
         }
@@ -178,20 +262,39 @@ class AdvancedKMeans {
     return centroids;
   }
 
+  // ============================================================================
+  // QUALITY METRICS
+  // ============================================================================
+  
+  /**
+   * Inertia: Measures how tight the clusters are
+   * - Sum of squared distances from points to their cluster centers
+   * - Lower values = tighter, better clusters
+   */
   private calculateInertia(data: number[][], assignments: number[], centroids: number[][]): number {
     let inertia = 0;
 
     for (let i = 0; i < data.length; i++) {
       const clusterIndex = assignments[i];
       const distance = this.euclideanDistance(data[i], centroids[clusterIndex]);
-      inertia += distance * distance;
+      inertia += distance * distance;  // Square the distance
     }
 
     return inertia;
   }
 
+  /**
+   * Silhouette Score: Measures how well-separated clusters are
+   * - Range: -1 to +1 (higher is better)
+   * - Formula: (b - a) / max(a, b)
+   *   - a = average distance to points in same cluster
+   *   - b = minimum average distance to points in other clusters
+   * - +1: Points are well-clustered
+   * - 0: Points are on cluster boundaries  
+   * - -1: Points may be in wrong clusters
+   */
   private calculateSilhouetteScore(data: number[][], assignments: number[]): number {
-    if (this.k === 1) return 0;
+    if (this.k === 1) return 0;  // Can't calculate silhouette for single cluster
 
     const silhouetteScores: number[] = [];
 
@@ -208,23 +311,36 @@ class AdvancedKMeans {
       // Calculate minimum average distance to points in other clusters (b)
       let b = Infinity;
       for (let otherCluster = 0; otherCluster < this.k; otherCluster++) {
-        if (otherCluster === cluster) continue;
+        if (otherCluster === cluster) continue;  // Skip same cluster
 
         const otherClusterPoints = data.filter((_, index) => assignments[index] === otherCluster);
         if (otherClusterPoints.length > 0) {
           const avgDistance = otherClusterPoints.reduce((sum, otherPoint) => sum + this.euclideanDistance(point, otherPoint), 0) / otherClusterPoints.length;
-          b = Math.min(b, avgDistance);
+          b = Math.min(b, avgDistance);  // Find closest other cluster
         }
       }
 
+      // Calculate silhouette score for this point
       const silhouette = b === Infinity ? 0 : (b - a) / Math.max(a, b);
       silhouetteScores.push(silhouette);
     }
 
+    // Return average silhouette score across all points
     return silhouetteScores.reduce((sum, score) => sum + score, 0) / silhouetteScores.length;
   }
 
+  // ============================================================================
+  // MAIN CLUSTERING ALGORITHM
+  // ============================================================================
+  /**
+   * Main K-means clustering algorithm
+   * - Initializes centroids using K-means++
+   * - Iteratively assigns points and updates centroids
+   * - Stops when convergence is reached or max iterations hit
+   * - Returns clustering results with quality metrics
+   */
   cluster(data: number[][]): { assignments: number[]; centroids: number[][]; inertia: number; silhouetteScore: number; iterations: number } {
+    // Input validation
     if (data.length === 0) {
       throw new Error('Cannot cluster empty data');
     }
@@ -233,89 +349,114 @@ class AdvancedKMeans {
       throw new Error('K cannot be greater than the number of data points');
     }
 
+    // Initialize centroids using K-means++ (better than random)
     let centroids = this.initializeCentroids(data, this.initMethod);
     let assignments: number[] = [];
     let previousInertia = Infinity;
     let iterations = 0;
 
+    // Main clustering loop
     for (let iteration = 0; iteration < this.maxIterations; iteration++) {
+      // Step 1: Assign each point to nearest centroid
       const newAssignments = this.assignToClusters(data, centroids);
+      
+      // Step 2: Update centroids based on new assignments
       const newCentroids = this.updateCentroids(data, newAssignments);
+      
+      // Step 3: Calculate new inertia (quality metric)
       const inertia = this.calculateInertia(data, newAssignments, newCentroids);
 
-      // Check for convergence
+      // Check for convergence (when inertia stops improving significantly)
       if (Math.abs(previousInertia - inertia) < this.tolerance) {
         assignments = newAssignments;
         centroids = newCentroids;
         iterations = iteration + 1;
-        break;
+        break;  // Algorithm converged!
       }
 
+      // Update for next iteration
       assignments = newAssignments;
       centroids = newCentroids;
       previousInertia = inertia;
       iterations = iteration + 1;
     }
 
+    // Calculate final quality metrics
     const finalInertia = this.calculateInertia(data, assignments, centroids);
     const silhouetteScore = this.calculateSilhouetteScore(data, assignments);
 
     return {
-      assignments,
-      centroids,
-      inertia: finalInertia,
-      silhouetteScore,
-      iterations
+      assignments,      // Which cluster each point belongs to
+      centroids,        // Final cluster centers
+      inertia: finalInertia,           // How tight clusters are
+      silhouetteScore,  // How well-separated clusters are
+      iterations        // How many iterations it took
     };
   }
 }
 
+// ============================================================================
+// FEATURE ENGINEERING
+// ============================================================================
+/**
+ * FeatureEngineer: Transforms raw health data into numerical features
+ * - Extracts 14 different types of features from health data
+ * - Normalizes features for machine learning algorithms
+ * - Creates features that capture health patterns and trends
+ */
 class FeatureEngineer {
+  /**
+   * Extracts numerical features from raw health data
+   * - Converts symptoms, lifestyle, and text data into numbers
+   * - Creates 14 different feature types for comprehensive analysis
+   */
   static extractFeatures(healthData: HealthDataInput[]): FeatureVector[] {
     return healthData.map((data, index) => {
       const features = [
-        // Basic features
-        data.severity,
-        data.sleep,
-        data.stress,
-        data.exercise,
+        // ===== BASIC FEATURES =====
+        data.severity,        // Overall symptom severity (1-10)
+        data.sleep,           // Hours of sleep (0-12)
+        data.stress,          // Stress level (1-10)
+        data.exercise,        // Minutes of exercise (0-300)
 
-        // Symptom-based features
-        data.symptoms.length,
-        this.calculateSymptomSeverityScore(data.symptoms),
-        this.calculateSymptomDiversityScore(data.symptoms),
+        // ===== SYMPTOM-BASED FEATURES =====
+        data.symptoms.length,                                    // Number of symptoms
+        this.calculateSymptomSeverityScore(data.symptoms),      // Weighted symptom severity
+        this.calculateSymptomDiversityScore(data.symptoms),     // How many body systems affected
 
-        // Temporal features
-        this.getTimeOfDayScore(data.timestamp),
-        this.getDayOfWeekScore(data.timestamp),
+        // ===== TEMPORAL FEATURES =====
+        this.getTimeOfDayScore(data.timestamp),                 // Time of day pattern
+        this.getDayOfWeekScore(data.timestamp),                 // Weekend vs weekday
 
-        // Derived features
-        this.calculateSleepStressRatio(data.sleep, data.stress),
-        this.calculateExerciseSeverityRatio(data.exercise, data.severity),
-        this.calculateLifestyleScore(data.sleep, data.stress, data.exercise),
+        // ===== DERIVED FEATURES =====
+        this.calculateSleepStressRatio(data.sleep, data.stress),           // Sleep-stress balance
+        this.calculateExerciseSeverityRatio(data.exercise, data.severity), // Exercise-symptom balance
+        this.calculateLifestyleScore(data.sleep, data.stress, data.exercise), // Overall lifestyle health
 
-        // Diet features
-        this.getDietQualityScore(data.diet),
+        // ===== DIET FEATURES =====
+        this.getDietQualityScore(data.diet),                    // Diet quality assessment
 
-        // Text-based features
-        this.getNotesComplexityScore(data.notes)
+        // ===== TEXT-BASED FEATURES =====
+        this.getNotesComplexityScore(data.notes)                // Complexity of health notes
       ];
 
+      // Feature names for interpretability (must match features array above)
       const featureNames = [
-        'severity', 'sleep', 'stress', 'exercise',
-        'symptom_count', 'symptom_severity_score', 'symptom_diversity',
-        'time_of_day_score', 'day_of_week_score',
-        'sleep_stress_ratio', 'exercise_severity_ratio', 'lifestyle_score',
-        'diet_quality', 'notes_complexity'
+        'severity', 'sleep', 'stress', 'exercise',                    // Basic features
+        'symptom_count', 'symptom_severity_score', 'symptom_diversity', // Symptom features
+        'time_of_day_score', 'day_of_week_score',                     // Temporal features
+        'sleep_stress_ratio', 'exercise_severity_ratio', 'lifestyle_score', // Derived features
+        'diet_quality', 'notes_complexity'                            // Diet & text features
       ];
 
+      // Create FeatureVector object with extracted features
       return {
-        id: uuidv4(),
-        userId: '', // Will be set by the calling function
-        timestamp: data.timestamp,
-        features,
-        featureNames,
-        rawData: data
+        id: uuidv4(),                    // Unique identifier
+        userId: '',                      // Will be set by the calling function
+        timestamp: data.timestamp,       // When this data was collected
+        features,                        // 14 numerical features for ML
+        featureNames,                    // Names of each feature
+        rawData: data                    // Original health data for reference
       };
     });
   }
@@ -499,6 +640,40 @@ export class MachineLearningService {
   }
 
   private async initializeDeploymentService() {
+    // Prefer ProductionRiskAssessment if available (generated by deployment)
+    try {
+      const praModule: any = await import('./ProductionRiskAssessment');
+      const PRAClass = praModule.ProductionRiskAssessment || praModule.default;
+      if (PRAClass) {
+        const praInstance = new PRAClass();
+        // Adapter to match ModelDeploymentService API used elsewhere
+        this.deploymentService = {
+          getDeployedModelInfo: () => praInstance.getModelInfo(),
+          assessHealthRisk: async (healthData: HealthDataInput) => {
+            const r = praInstance.assessRisk(healthData);
+            return {
+              overallRisk: r.overallRisk,
+              confidence: r.confidence,
+              primaryCluster: 0,
+              riskScore: r.riskScore,
+              severityRisk: r.severityRisk,
+              lifestyleRisk: r.lifestyleRisk,
+              symptomRisk: r.symptomRisk,
+              immediateActions: r.immediateActions,
+              preventativeActions: r.preventativeActions,
+              followUpRecommended: r.followUpRecommended,
+              accessibilityFactors: r.accessibilityFactors,
+              seasonalConsiderations: r.seasonalConsiderations
+            };
+          }
+        };
+        return;
+      }
+    } catch (error) {
+      // PRA not found; will fall back to ModelDeploymentService
+    }
+
+    // Fallback: use ModelDeploymentService if PRA is not available
     try {
       const { default: ModelDeploymentService } = await import('./ModelDeploymentService');
       this.deploymentService = new ModelDeploymentService();
@@ -599,9 +774,7 @@ export class MachineLearningService {
         ],
         confidence: riskAssessment.confidence,
         featureImportance: {},
-        anomalies: [],
-        // Additional deployed model specific data
-        deployedModelAssessment: riskAssessment
+        anomalies: []
       };
 
     } catch (error) {

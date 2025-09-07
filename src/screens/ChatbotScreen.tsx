@@ -225,7 +225,8 @@ const ChatbotScreen: React.FC = () => {
         message = `Duration: ${option.text}`;
         break;
       case 'action':
-        message = option.text;
+        // Send the canonical action value when available so NLP can react
+        message = String(option.value || option.text);
         break;
     }
     if (message) {
@@ -283,6 +284,16 @@ const ChatbotScreen: React.FC = () => {
           </View>
         )}
         
+        {!item.isUser && item.nlpAnalysis && (
+          <View style={styles.confidenceContainer}>
+            {item.nlpAnalysis.sentimentLabel && (
+              <Text style={styles.confidenceText}>
+                Sentiment: {item.nlpAnalysis.sentimentLabel} {(item.nlpAnalysis.sentimentScore ?? 0).toFixed(2)}
+              </Text>
+            )}
+          </View>
+        )}
+
         {!item.isUser && item.options && (
           renderChatOptions(item.options)
         )}
@@ -447,7 +458,6 @@ const ChatbotScreen: React.FC = () => {
           >
             {[
               { icon: 'warning', label: 'Emergency', action: 'emergency', color: '#F44336' },
-              { icon: 'medical', label: 'Symptom Check', action: 'symptom_check', color: '#2E7D32' },
               { icon: 'pills', label: 'Medication', action: 'medication_help', color: '#4CAF50' },
               { icon: 'help-circle', label: 'Health Advice', action: 'health_advice', color: '#FF9800' },
               { icon: 'heart', label: 'Mental Health', action: 'mental_health', color: '#9C27B0' },
@@ -493,19 +503,13 @@ const ChatbotScreen: React.FC = () => {
       {/* Input Area */}
       <View style={styles.inputContainer}>
         <View style={styles.inputRow}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => setShowSymptomModal(true)}
-          >
-            <Ionicons name="add-circle" size={28} color="#2E7D32" />
-          </TouchableOpacity>
           
           <View style={styles.textInputContainer}>
             <TextInput
               style={styles.textInput}
               value={inputText}
               onChangeText={setInputText}
-              placeholder="Tell Ada about your health concern..."
+              placeholder="Tell AI about your health concern..."
               placeholderTextColor="#999"
               multiline
               maxLength={500}
@@ -530,7 +534,6 @@ const ChatbotScreen: React.FC = () => {
       </View>
 
       {renderSeverityModal()}
-      {renderSymptomModal()}
     </SafeAreaView>
   );
 };

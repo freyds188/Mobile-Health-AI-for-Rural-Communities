@@ -6,9 +6,9 @@
 
 export class ProductionRiskAssessment {
   private modelConfig = {
-  "modelId": "production_model_1754846975268",
+  "modelId": "production_model_1757266575732",
   "version": "1.0.0",
-  "timestamp": "2025-08-10T17:29:35.268Z",
+  "timestamp": "2025-09-07T17:36:15.732Z",
   "performance": {
     "f1Score": 0.925,
     "accuracy": 0.887

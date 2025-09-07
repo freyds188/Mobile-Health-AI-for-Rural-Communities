@@ -1,0 +1,9 @@
+id,userId,timestamp,symptoms,severity,sleep,stress,exercise,diet,notes,age,gender,location,medical_history
+1000,conv_user,2025-09-07T19:07:54.338Z,"[""headache""]",5,7.0,5,20,balanced,What should I do for a headache?,35,female,rural_area,none
+1001,conv_user,2025-09-07T19:07:54.338Z,[],5,7.0,5,20,balanced,How can I prevent getting sick?,35,female,rural_area,none
+1002,conv_user,2025-09-07T19:07:54.338Z,"[""rural_location""]",5,7.0,5,20,balanced,I live in a rural area. Any health tips?,35,female,rural_area,none
+1003,conv_user,2025-09-07T19:07:54.338Z,"[""fever"",""cough""]",5,7.0,5,20,balanced,I have fever and cough. Any advice?,35,female,rural_area,none
+1004,conv_user,2025-09-07T19:07:54.338Z,"[""mental_health"",""insomnia""]",5,7.0,5,20,balanced,I feel anxious and can't sleep. What can I do?,35,female,rural_area,none
+1005,conv_user,2025-09-07T19:07:54.338Z,[],5,7.0,5,20,balanced,Tell me about ways to stay healthy daily.,35,female,rural_area,none
+1006,conv_user,2025-09-07T19:07:54.338Z,"[""diarrhea""]",5,7.0,5,20,balanced,How to deal with diarrhea at home?,35,female,rural_area,none
+1007,conv_user,2025-09-07T19:07:54.338Z,[],5,7.0,5,20,balanced,What are signs that I need urgent care?,35,female,rural_area,none

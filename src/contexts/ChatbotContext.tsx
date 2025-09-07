@@ -71,18 +71,10 @@ export const ChatbotProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (messages.length === 0) {
         const welcomeMessage: ChatMessage = {
           id: 'welcome-' + Date.now(),
-          text: `Hello ${user.name}! I'm Ada, your health assistant. I'm here to help you understand your symptoms and get the care you need. What symptoms are you experiencing today?`,
+          text: `Hello ${user.name}! How can I assist you today?`,
           isUser: false,
           timestamp: new Date(),
-          intent: 'greeting',
-          options: [
-            { id: 'symptom_headache', text: 'Headache', type: 'symptom', value: 'headache' },
-            { id: 'symptom_fever', text: 'Fever', type: 'symptom', value: 'fever' },
-            { id: 'symptom_cough', text: 'Cough', type: 'symptom', value: 'cough' },
-            { id: 'symptom_chest_pain', text: 'Chest Pain', type: 'symptom', value: 'chest_pain', color: '#FF3B30' },
-            { id: 'symptom_diarrhea', text: 'Diarrhea', type: 'symptom', value: 'diarrhea' },
-            { id: 'symptom_back_pain', text: 'Back Pain', type: 'symptom', value: 'back_pain' },
-          ]
+          intent: 'greeting'
         };
         setMessages([welcomeMessage]);
       }
@@ -187,7 +179,7 @@ export const ChatbotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     const welcomeMessage: ChatMessage = {
       id: 'welcome-' + Date.now(),
-      text: `Hello ${user.name}! I'm your AI health assistant. How are you feeling today?`,
+      text: `Hello ${user.name}! How can I assist you today?`,
       isUser: false,
       timestamp: new Date(),
       intent: 'greeting'

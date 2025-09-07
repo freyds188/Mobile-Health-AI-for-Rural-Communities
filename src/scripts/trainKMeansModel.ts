@@ -20,9 +20,8 @@ class KMeansTrainingScript {
       await dataService.initialize();
       console.log('✅ DataService initialized');
       
-      // Initialize training service
-      await this.trainingService.initialize();
-      console.log('✅ TrainingService initialized');
+      // Training service uses internal dataset initialization
+      console.log('✅ TrainingService ready');
       
       console.log('🎯 All services initialized successfully');
     } catch (error) {
@@ -35,29 +34,39 @@ class KMeansTrainingScript {
     console.log('🧠 Starting K-means model training...');
     
     try {
-      // Load all available datasets
+      // Load all available datasets (analysis summary)
       console.log('📊 Loading datasets...');
-      const datasets = await this.trainingService.loadAllDatasets();
-      console.log(`✅ Loaded ${datasets.length} datasets`);
+      const analyses = await this.trainingService.loadAllDatasets();
+      console.log(`✅ Loaded ${analyses.length} dataset analyses`);
 
-      if (datasets.length === 0) {
+      if (analyses.length === 0) {
         console.warn('⚠️ No datasets available for training');
         return false;
       }
 
       // Combine all datasets for training
       console.log('🔄 Combining datasets...');
-      const combinedData = this.combineDatasets(datasets);
+      const combinedData = this.combineDatasets((this as any).trainingService.datasets ? Array.from((this as any).trainingService.datasets.values()).map((d: any) => d.records) : []);
       console.log(`✅ Combined data contains ${combinedData.length} records`);
 
-      // Train K-means model
-      console.log('🎯 Training K-means model...');
-      const modelResult = await this.mlService.trainKMeansModel(combinedData);
+      // Train using ML analysis pipeline
+      console.log('🎯 Running ML analysis on combined data...');
+      const healthData = combinedData.map((record: any) => ({
+        symptoms: record.symptoms || [],
+        severity: record.severity,
+        sleep: record.behavior?.sleep ?? 7,
+        stress: record.behavior?.stress ?? 5,
+        exercise: record.behavior?.exercise ?? 30,
+        diet: record.behavior?.diet ?? 'balanced',
+        notes: record.notes || '',
+        timestamp: new Date(record.timestamp)
+      }));
+
+      const modelResult = await this.mlService.analyzeHealthData('training_pipeline', healthData);
       
-      if (modelResult.success) {
+      if (modelResult) {
         console.log('✅ K-means model trained successfully');
-        console.log(`📈 Model accuracy: ${modelResult.accuracy?.toFixed(2)}%`);
-        console.log(`🎯 Number of clusters: ${modelResult.clusters?.length || 'N/A'}`);
+        console.log(`🎯 Number of clusters: ${modelResult.clusters?.length || 0}`);
         
         // Save model to database
         console.log('💾 Saving model to database...');
@@ -66,7 +75,7 @@ class KMeansTrainingScript {
         
         return true;
       } else {
-        console.error('❌ K-means model training failed:', modelResult.error);
+        console.error('❌ K-means model training failed: No result returned');
         return false;
       }
     } catch (error) {
@@ -78,7 +87,7 @@ class KMeansTrainingScript {
   private combineDatasets(datasets: any[]): any[] {
     const combined: any[] = [];
     
-    datasets.forEach((dataset, index) => {
+    datasets.forEach((dataset: any[], index: number) => {
       console.log(`📊 Processing dataset ${index + 1}: ${dataset.length} records`);
       
       dataset.forEach((record: any) => {
@@ -133,12 +142,12 @@ class KMeansTrainingScript {
         version: '1.0',
         accuracy: modelResult.accuracy,
         clusters: modelResult.clusters,
-        features: modelResult.features,
+        features: modelResult.featureImportance,
         trainedAt: new Date().toISOString(),
         metadata: {
           algorithm: 'K-means',
-          parameters: modelResult.parameters,
-          datasetSize: modelResult.datasetSize
+          parameters: {},
+          datasetSize: modelResult?.clusters?.reduce((sum: number, c: any) => sum + (c.members?.length || 0), 0) || 0
         }
       };
 
@@ -148,7 +157,9 @@ class KMeansTrainingScript {
       // For now, just log the model info
       console.log('📋 Model Summary:');
       console.log(`   - Type: ${modelData.type}`);
-      console.log(`   - Accuracy: ${modelData.accuracy?.toFixed(2)}%`);
+      if (typeof modelData.accuracy === 'number') {
+        console.log(`   - Accuracy: ${modelData.accuracy.toFixed(2)}%`);
+      }
       console.log(`   - Clusters: ${modelData.clusters?.length || 0}`);
       console.log(`   - Trained at: ${modelData.trainedAt}`);
       

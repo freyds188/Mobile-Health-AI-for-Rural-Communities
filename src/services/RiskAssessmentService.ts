@@ -33,6 +33,13 @@ export interface RiskAssessment {
     urgency: 'low' | 'medium' | 'high';
     recommendations: string[];
     sources: string[];
+    demographicIndicators: {
+      ageGroup: string;
+      genderPrevalence: 'male' | 'female' | 'both';
+      pastConditionRisk: string[];
+      ageSpecificRisk: string;
+      genderSpecificRisk: string;
+    };
   }>;
   lifestyleFactors: {
     sleepQuality: number;
@@ -81,7 +88,8 @@ export class RiskAssessmentService {
 
   constructor() {
     this.mlService = new MachineLearningService();
-    this.initializeConditionMappings();
+    // Remove predefined mappings; will rely on dataset-derived conditions only
+    this.conditionMappings = [];
   }
 
   private initializeConditionMappings(): void {
@@ -432,7 +440,8 @@ export class RiskAssessmentService {
              severity: 'mild',
              urgency: 'low',
              recommendations: ['Monitor your symptoms', 'Maintain healthy lifestyle', 'Consider consulting a healthcare provider if symptoms persist'],
-             sources: ['Mayo Clinic: https://www.mayoclinic.org/', 'Centers for Disease Control and Prevention: https://www.cdc.gov/']
+             sources: ['Mayo Clinic: https://www.mayoclinic.org/', 'Centers for Disease Control and Prevention: https://www.cdc.gov/'],
+             demographicIndicators: this.generateDemographicIndicators('General Health Assessment', {})
            }],
           lifestyleFactors: {
             sleepQuality: 7.0,
@@ -541,6 +550,13 @@ export class RiskAssessmentService {
     urgency: 'low' | 'medium' | 'high';
     recommendations: string[];
     sources: string[];
+    demographicIndicators: {
+      ageGroup: string;
+      genderPrevalence: 'male' | 'female' | 'both';
+      pastConditionRisk: string[];
+      ageSpecificRisk: string;
+      genderSpecificRisk: string;
+    };
   }>> {
     try {
       console.log('🔍 RiskAssessmentService: Identifying conditions using datasets...');
@@ -551,11 +567,8 @@ export class RiskAssessmentService {
       // Extract conditions from datasets
       const datasetConditions = this.extractConditionsFromDatasets(datasetAnalyses);
       
-      // Combine with existing condition mappings
-      const allConditions = [...this.conditionMappings, ...datasetConditions];
-      
-      // Use the original identification logic with enhanced conditions
-      const conditions = this.identifyPotentialConditions(patterns, demographics);
+      // Build condition list directly from dataset-derived mappings
+      const conditions = this.buildConditionsFromDataset(datasetConditions, patterns, demographics);
       
       // Enhance with dataset-specific insights
       const enhancedConditions = await this.enhanceConditionsWithDatasetInsights(conditions, demographics, datasetAnalyses);
@@ -566,8 +579,65 @@ export class RiskAssessmentService {
     } catch (error) {
       console.error('❌ RiskAssessmentService: Dataset-based condition identification failed:', error);
       // Fallback to original method
-      return this.identifyPotentialConditions(patterns, demographics);
+      return [];
     }
+  }
+
+  private buildConditionsFromDataset(
+    datasetMappings: ConditionMapping[],
+    patterns: any[],
+    demographics?: UserDemographics
+  ): Array<{
+    condition: string;
+    description: string;
+    probability: number;
+    severity: 'mild' | 'moderate' | 'severe';
+    urgency: 'low' | 'medium' | 'high';
+    recommendations: string[];
+    sources: string[];
+    demographicIndicators: {
+      ageGroup: string;
+      genderPrevalence: 'male' | 'female' | 'both';
+      pastConditionRisk: string[];
+      ageSpecificRisk: string;
+      genderSpecificRisk: string;
+    };
+  }> {
+    const symptomsInPatterns = new Set<string>();
+    (patterns || []).forEach((p: any) => {
+      (p.symptoms || []).forEach((s: string) => symptomsInPatterns.add((s || '').toLowerCase()));
+    });
+
+    const results: any[] = [];
+    datasetMappings.forEach(mapping => {
+      const mappingSymptoms = (mapping.symptoms || []).map(s => s.toLowerCase());
+      const overlap = mappingSymptoms.filter(s => symptomsInPatterns.has(s));
+      const matchRatio = mappingSymptoms.length > 0 ? overlap.length / mappingSymptoms.length : 0;
+      if (matchRatio > 0) {
+        const probability = Math.min(0.95, 0.4 + matchRatio * 0.5);
+        const avgSeverity = mapping.severityThreshold || 6;
+        const severity: 'mild' | 'moderate' | 'severe' = avgSeverity <= 3 ? 'mild' : avgSeverity <= 6 ? 'moderate' : 'severe';
+        const urgency: 'low' | 'medium' | 'high' = avgSeverity >= 8 ? 'high' : avgSeverity >= 5 ? 'medium' : 'low';
+        results.push({
+          condition: mapping.condition,
+          description: `${mapping.condition} inferred from dataset-trained symptom patterns`,
+          probability,
+          severity,
+          urgency,
+          recommendations: [],
+          sources: ['datasets'],
+          demographicIndicators: {
+            ageGroup: (mapping.ageGroups && mapping.ageGroups[0]) || 'all',
+            genderPrevalence: (mapping.genderPrevalence as any) || 'both',
+            pastConditionRisk: [],
+            ageSpecificRisk: '',
+            genderSpecificRisk: ''
+          }
+        });
+      }
+    });
+
+    return results;
   }
 
   private extractConditionsFromDatasets(datasetAnalyses: any[]): ConditionMapping[] {
@@ -762,6 +832,13 @@ export class RiskAssessmentService {
     urgency: 'low' | 'medium' | 'high';
     recommendations: string[];
     sources: string[];
+    demographicIndicators: {
+      ageGroup: string;
+      genderPrevalence: 'male' | 'female' | 'both';
+      pastConditionRisk: string[];
+      ageSpecificRisk: string;
+      genderSpecificRisk: string;
+    };
   }> {
     console.log('🔍 RiskAssessmentService: Starting condition identification with', patterns.length, 'patterns');
     const conditions: Array<{
@@ -772,6 +849,13 @@ export class RiskAssessmentService {
       urgency: 'low' | 'medium' | 'high';
       recommendations: string[];
       sources: string[];
+      demographicIndicators: {
+        ageGroup: string;
+        genderPrevalence: 'male' | 'female' | 'both';
+        pastConditionRisk: string[];
+        ageSpecificRisk: string;
+        genderSpecificRisk: string;
+      };
     }> = [];
 
     // Analyze each pattern against condition mappings
@@ -811,7 +895,8 @@ export class RiskAssessmentService {
                severity,
                urgency,
                recommendations,
-               sources: this.getConditionSources(mapping.condition)
+               sources: this.getConditionSources(mapping.condition),
+               demographicIndicators: this.generateDemographicIndicators(mapping.condition, demographics)
              });
           }
         }
@@ -1369,6 +1454,235 @@ export class RiskAssessmentService {
     ];
   }
 
+  private generateDemographicIndicators(
+    condition: string, 
+    demographics?: UserDemographics
+  ): {
+    ageGroup: string;
+    genderPrevalence: 'male' | 'female' | 'both';
+    pastConditionRisk: string[];
+    ageSpecificRisk: string;
+    genderSpecificRisk: string;
+  } {
+    // Age group determination
+    let ageGroup = 'all';
+    if (demographics?.age) {
+      if (demographics.age < 18) ageGroup = 'child';
+      else if (demographics.age < 65) ageGroup = 'adult';
+      else ageGroup = 'elderly';
+    }
+
+    // Condition-specific demographic data
+    const conditionDemographics: { [key: string]: {
+      ageGroups: string[];
+      genderPrevalence: 'male' | 'female' | 'both';
+      pastConditions: string[];
+      ageRisk: string;
+      genderRisk: string;
+    }} = {
+      'Upper Respiratory Infection': {
+        ageGroups: ['all'],
+        genderPrevalence: 'both',
+        pastConditions: ['asthma', 'allergies', 'smoking history'],
+        ageRisk: 'Common in all age groups, but more frequent in children and elderly',
+        genderRisk: 'No significant gender difference'
+      },
+      'Bronchitis': {
+        ageGroups: ['adult', 'elderly'],
+        genderPrevalence: 'both',
+        pastConditions: ['smoking history', 'asthma', 'COPD'],
+        ageRisk: 'More common in adults and elderly, especially smokers',
+        genderRisk: 'Slightly higher in males due to smoking prevalence'
+      },
+      'Asthma': {
+        ageGroups: ['child', 'adult'],
+        genderPrevalence: 'both',
+        pastConditions: ['allergies', 'family history of asthma', 'respiratory infections'],
+        ageRisk: 'Common in children, can develop at any age',
+        genderRisk: 'More common in boys during childhood, equal in adults'
+      },
+      'Hypertension': {
+        ageGroups: ['adult', 'elderly'],
+        genderPrevalence: 'both',
+        pastConditions: ['diabetes', 'obesity', 'family history'],
+        ageRisk: 'Risk increases with age, especially after 40',
+        genderRisk: 'More common in males under 65, females over 65'
+      },
+      'Diabetes': {
+        ageGroups: ['adult', 'elderly'],
+        genderPrevalence: 'both',
+        pastConditions: ['obesity', 'family history', 'gestational diabetes'],
+        ageRisk: 'Risk increases with age, especially after 45',
+        genderRisk: 'Slightly higher in males'
+      },
+      'Depression': {
+        ageGroups: ['adult', 'elderly'],
+        genderPrevalence: 'female',
+        pastConditions: ['anxiety', 'trauma history', 'family history'],
+        ageRisk: 'Can occur at any age, peak in 20s-30s',
+        genderRisk: 'Twice as common in females'
+      },
+      'Anxiety': {
+        ageGroups: ['adult', 'elderly'],
+        genderPrevalence: 'female',
+        pastConditions: ['depression', 'trauma history', 'family history'],
+        ageRisk: 'Can occur at any age, often starts in early adulthood',
+        genderRisk: 'More common in females'
+      },
+      'Migraine': {
+        ageGroups: ['adult'],
+        genderPrevalence: 'female',
+        pastConditions: ['family history', 'hormonal changes'],
+        ageRisk: 'Peak in 30s-40s, can start in teens',
+        genderRisk: 'Three times more common in females'
+      },
+      'Arthritis': {
+        ageGroups: ['adult', 'elderly'],
+        genderPrevalence: 'female',
+        pastConditions: ['obesity', 'joint injuries', 'family history'],
+        ageRisk: 'Risk increases with age, especially after 50',
+        genderRisk: 'More common in females'
+      },
+      'Gastritis': {
+        ageGroups: ['adult', 'elderly'],
+        genderPrevalence: 'both',
+        pastConditions: ['H. pylori infection', 'NSAID use', 'alcohol use'],
+        ageRisk: 'More common in adults and elderly',
+        genderRisk: 'No significant gender difference'
+      },
+      'Insomnia': {
+        ageGroups: ['adult', 'elderly'],
+        genderPrevalence: 'female',
+        pastConditions: ['anxiety', 'depression', 'sleep apnea'],
+        ageRisk: 'More common in elderly, but affects all adults',
+        genderRisk: 'More common in females'
+      },
+      'Fatigue': {
+        ageGroups: ['all'],
+        genderPrevalence: 'female',
+        pastConditions: ['anemia', 'depression', 'sleep disorders'],
+        ageRisk: 'Can affect all age groups',
+        genderRisk: 'More commonly reported by females'
+      },
+      'Headache': {
+        ageGroups: ['all'],
+        genderPrevalence: 'female',
+        pastConditions: ['migraine history', 'stress', 'eye strain'],
+        ageRisk: 'Can affect all age groups',
+        genderRisk: 'More common in females'
+      },
+      'Cough': {
+        ageGroups: ['all'],
+        genderPrevalence: 'both',
+        pastConditions: ['asthma', 'allergies', 'smoking'],
+        ageRisk: 'Common in all age groups',
+        genderRisk: 'No significant gender difference'
+      },
+      'Fever': {
+        ageGroups: ['all'],
+        genderPrevalence: 'both',
+        pastConditions: ['recent infections', 'immunocompromised status'],
+        ageRisk: 'Can affect all age groups',
+        genderRisk: 'No significant gender difference'
+      },
+      'Chest pain': {
+        ageGroups: ['adult', 'elderly'],
+        genderPrevalence: 'both',
+        pastConditions: ['heart disease', 'anxiety', 'GERD'],
+        ageRisk: 'More concerning in adults and elderly',
+        genderRisk: 'No significant gender difference'
+      },
+      'Shortness of breath': {
+        ageGroups: ['all'],
+        genderPrevalence: 'both',
+        pastConditions: ['asthma', 'COPD', 'heart disease'],
+        ageRisk: 'Can affect all age groups',
+        genderRisk: 'No significant gender difference'
+      },
+      'Stomach pain': {
+        ageGroups: ['all'],
+        genderPrevalence: 'both',
+        pastConditions: ['gastritis', 'IBS', 'food allergies'],
+        ageRisk: 'Can affect all age groups',
+        genderRisk: 'No significant gender difference'
+      },
+      'Nausea': {
+        ageGroups: ['all'],
+        genderPrevalence: 'female',
+        pastConditions: ['migraine', 'pregnancy', 'gastritis'],
+        ageRisk: 'Can affect all age groups',
+        genderRisk: 'More common in females'
+      },
+      'Joint pain': {
+        ageGroups: ['adult', 'elderly'],
+        genderPrevalence: 'female',
+        pastConditions: ['arthritis', 'injury history', 'obesity'],
+        ageRisk: 'More common in adults and elderly',
+        genderRisk: 'More common in females'
+      },
+      'Dizziness': {
+        ageGroups: ['adult', 'elderly'],
+        genderPrevalence: 'female',
+        pastConditions: ['inner ear problems', 'low blood pressure', 'anxiety'],
+        ageRisk: 'More common in elderly',
+        genderRisk: 'More common in females'
+      },
+      'Back pain': {
+        ageGroups: ['adult', 'elderly'],
+        genderPrevalence: 'both',
+        pastConditions: ['injury history', 'poor posture', 'obesity'],
+        ageRisk: 'More common in adults and elderly',
+        genderRisk: 'No significant gender difference'
+      },
+      'General Viral Infection': {
+        ageGroups: ['all'],
+        genderPrevalence: 'both',
+        pastConditions: ['recent exposure', 'weakened immune system'],
+        ageRisk: 'Can affect all age groups',
+        genderRisk: 'No significant gender difference'
+      },
+      'Stress-Related Symptoms': {
+        ageGroups: ['adult', 'elderly'],
+        genderPrevalence: 'female',
+        pastConditions: ['anxiety', 'depression', 'work stress'],
+        ageRisk: 'More common in working adults',
+        genderRisk: 'More commonly reported by females'
+      },
+      'Seasonal Allergies': {
+        ageGroups: ['all'],
+        genderPrevalence: 'both',
+        pastConditions: ['family history', 'asthma', 'previous allergies'],
+        ageRisk: 'Can develop at any age',
+        genderRisk: 'No significant gender difference'
+      },
+      'Lifestyle-Related Symptoms': {
+        ageGroups: ['adult', 'elderly'],
+        genderPrevalence: 'both',
+        pastConditions: ['poor sleep habits', 'sedentary lifestyle', 'stress'],
+        ageRisk: 'More common in working adults',
+        genderRisk: 'No significant gender difference'
+      }
+    };
+
+    const defaultDemographics = {
+      ageGroups: ['all'],
+      genderPrevalence: 'both' as const,
+      pastConditions: ['general health factors'],
+      ageRisk: 'Can affect various age groups',
+      genderRisk: 'No significant gender difference'
+    };
+
+    const conditionData = conditionDemographics[condition] || defaultDemographics;
+
+    return {
+      ageGroup: conditionData.ageGroups.includes(ageGroup) ? ageGroup : conditionData.ageGroups[0],
+      genderPrevalence: conditionData.genderPrevalence,
+      pastConditionRisk: conditionData.pastConditions,
+      ageSpecificRisk: conditionData.ageRisk,
+      genderSpecificRisk: conditionData.genderRisk
+    };
+  }
+
   private generateConditionRecommendations(condition: string, severity: string, urgency: string): string[] {
     const recommendations: string[] = [];
     
@@ -1501,7 +1815,8 @@ export class RiskAssessmentService {
            severity: 'mild',
            urgency: 'low',
            recommendations: ['Ensure 7-8 hours of sleep', 'Maintain regular exercise routine'],
-           sources: ['Mayo Clinic: https://www.mayoclinic.org/', 'Centers for Disease Control and Prevention: https://www.cdc.gov/']
+           sources: ['Mayo Clinic: https://www.mayoclinic.org/', 'Centers for Disease Control and Prevention: https://www.cdc.gov/'],
+           demographicIndicators: this.generateDemographicIndicators('General Fatigue', {})
          }
        ],
       lifestyleFactors: {
@@ -1688,6 +2003,13 @@ export class RiskAssessmentService {
     urgency: 'low' | 'medium' | 'high';
     recommendations: string[];
     sources: string[];
+    demographicIndicators: {
+      ageGroup: string;
+      genderPrevalence: 'male' | 'female' | 'both';
+      pastConditionRisk: string[];
+      ageSpecificRisk: string;
+      genderSpecificRisk: string;
+    };
   }> {
     console.log('🔍 RiskAssessmentService: Creating conditions from symptoms:', symptoms);
     
@@ -1699,6 +2021,13 @@ export class RiskAssessmentService {
       urgency: 'low' | 'medium' | 'high';
       recommendations: string[];
       sources: string[];
+      demographicIndicators: {
+        ageGroup: string;
+        genderPrevalence: 'male' | 'female' | 'both';
+        pastConditionRisk: string[];
+        ageSpecificRisk: string;
+        genderSpecificRisk: string;
+      };
     }> = [];
 
     // Enhanced symptom-to-condition mapping with descriptions
@@ -1826,7 +2155,8 @@ export class RiskAssessmentService {
                severity: conditionInfo.severity,
                urgency: conditionInfo.urgency,
                recommendations: this.generateConditionRecommendations(conditionInfo.condition, conditionInfo.severity, conditionInfo.urgency),
-               sources: this.getConditionSources(conditionInfo.condition)
+               sources: this.getConditionSources(conditionInfo.condition),
+               demographicIndicators: this.generateDemographicIndicators(conditionInfo.condition, demographics)
              });
           }
         });
@@ -1884,7 +2214,8 @@ export class RiskAssessmentService {
             severity: conditionInfo.severity,
             urgency: conditionInfo.urgency,
             recommendations: conditionInfo.recommendations,
-            sources: this.getConditionSources(conditionInfo.condition)
+            sources: this.getConditionSources(conditionInfo.condition),
+            demographicIndicators: this.generateDemographicIndicators(conditionInfo.condition, demographics)
           });
         }
       });
@@ -1917,7 +2248,8 @@ export class RiskAssessmentService {
             severity: conditionInfo.severity,
             urgency: conditionInfo.urgency,
             recommendations: conditionInfo.recommendations,
-            sources: this.getConditionSources(conditionInfo.condition)
+            sources: this.getConditionSources(conditionInfo.condition),
+            demographicIndicators: this.generateDemographicIndicators(conditionInfo.condition, demographics)
           });
         }
       });

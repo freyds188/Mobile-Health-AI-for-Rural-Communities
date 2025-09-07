@@ -227,7 +227,7 @@ export class DataImportService {
       const syntheticUsers = await this.getSyntheticUsers();
       
       for (const user of syntheticUsers) {
-        await this.databaseService.deleteUser(user.id);
+        await this.databaseService.clearAllUserData(user.id);
         console.log(`🗑️ Removed synthetic user: ${user.email}`);
       }
       

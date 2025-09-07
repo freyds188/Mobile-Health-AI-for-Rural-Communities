@@ -306,6 +306,42 @@ const RiskAssessmentScreen = () => {
                      ))}
                    </View>
                  )}
+                 
+                 {/* Demographic Indicators */}
+                 {condition.demographicIndicators && (
+                   <View style={styles.demographicContainer}>
+                     <Text style={styles.demographicTitle}>👥 Demographic Risk Factors:</Text>
+                     
+                     <View style={styles.demographicItem}>
+                       <Text style={styles.demographicLabel}>Age Group:</Text>
+                       <Text style={styles.demographicValue}>{condition.demographicIndicators.ageGroup}</Text>
+                     </View>
+                     
+                     <View style={styles.demographicItem}>
+                       <Text style={styles.demographicLabel}>Gender Prevalence:</Text>
+                       <Text style={styles.demographicValue}>{condition.demographicIndicators.genderPrevalence}</Text>
+                     </View>
+                     
+                     <View style={styles.demographicItem}>
+                       <Text style={styles.demographicLabel}>Age-Specific Risk:</Text>
+                       <Text style={styles.demographicValue}>{condition.demographicIndicators.ageSpecificRisk}</Text>
+                     </View>
+                     
+                     <View style={styles.demographicItem}>
+                       <Text style={styles.demographicLabel}>Gender-Specific Risk:</Text>
+                       <Text style={styles.demographicValue}>{condition.demographicIndicators.genderSpecificRisk}</Text>
+                     </View>
+                     
+                     {condition.demographicIndicators.pastConditionRisk.length > 0 && (
+                       <View style={styles.demographicItem}>
+                         <Text style={styles.demographicLabel}>Past Condition Risk Factors:</Text>
+                         <Text style={styles.demographicValue}>
+                           {condition.demographicIndicators.pastConditionRisk.join(', ')}
+                         </Text>
+                       </View>
+                     )}
+                   </View>
+                 )}
               </View>
             ))}
           </View>
@@ -847,6 +883,45 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 8,
     fontStyle: 'italic',
+  },
+  demographicContainer: {
+    borderTopWidth: 3,
+    borderTopColor: '#E1E5E9',
+    paddingTop: 20,
+    marginTop: 20,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 16,
+  },
+  demographicTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 16,
+    lineHeight: 26,
+  },
+  demographicItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E1E5E9',
+  },
+  demographicLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#444',
+    flex: 1,
+    marginRight: 12,
+  },
+  demographicValue: {
+    fontSize: 14,
+    color: '#666',
+    flex: 2,
+    textAlign: 'right',
+    lineHeight: 20,
   },
 });
 

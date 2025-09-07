@@ -404,7 +404,7 @@ export class DatasetLoader {
     for (let i = 0; i < size; i++) {
       // Random symptom selection (1-3 symptoms)
       const numSymptoms = Math.floor(Math.random() * 3) + 1;
-      const symptoms = [];
+      const symptoms: string[] = [];
       for (let j = 0; j < numSymptoms; j++) {
         const symptom = sampleSymptoms[Math.floor(Math.random() * sampleSymptoms.length)];
         if (!symptoms.includes(symptom)) {

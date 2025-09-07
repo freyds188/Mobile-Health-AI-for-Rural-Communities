@@ -7,14 +7,21 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "build:web": "expo export:web",
     "train:basic": "npx tsx src/scripts/trainBasicModel.ts",
     "train:advanced": "npx tsx src/scripts/trainAdvancedModel.ts",
     "train:real": "npx tsx src/scripts/trainWithRealData-node.ts",
+    "train:nlp": "npx tsx src/scripts/trainNLPModel.ts",
+    "seed:nlp": "npx tsx src/scripts/seedNLPTrainingData.ts",
+    "seed:nlp:all": "npx tsx src/scripts/seedNLPTrainingData.ts && npx tsx src/scripts/trainNLPModel.ts",
+    "generate:conv-dataset": "npx tsx src/scripts/generateConversationalDataset.ts",
+    "generate:sentiment-dataset": "npx tsx src/scripts/generateSentimentDataset.ts",
+    "seed:sentiment-lexicon": "npx tsx src/scripts/seedSentimentLexicon.ts",
     "train:app": "npx tsx src/scripts/trainWithRealData.ts",
     "validate:model": "npx tsx src/scripts/validateModel.ts",
     "deploy:model": "npx tsx src/scripts/deployModel-node.ts",
     "test:health-data": "npx tsx src/scripts/testHealthDataLogging.ts",
-    "analyze:dataset": "python training/dataset_analyzer.py"
+    "analyze:dataset": "echo 'Dataset analyzer moved into docs; run dataset_analyzer.py manually if needed'"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.2.3",

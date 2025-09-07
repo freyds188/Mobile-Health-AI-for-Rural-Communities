@@ -483,13 +483,7 @@ export class DatabaseService {
     // Add some complexity by reversing and adding length
     hash = hash.split('').reverse().join('') + combined.length.toString(36);
     
-    console.log('🔐 DatabaseService: Using deterministic hash method');
-    console.log('🔐 Input for hashing:', { 
-      passwordLength: password.length, 
-      saltLength: passwordSalt.length,
-      combinedLength: combined.length,
-      hashLength: hash.length
-    });
+    // Using deterministic hashing method (details omitted in logs for security)
     
     return { hash, salt: passwordSalt };
   }
@@ -615,9 +609,7 @@ export class DatabaseService {
     const { hash, salt } = await this.hashPassword(userData.password);
     const now = new Date().toISOString();
     
-    console.log('🔍 DatabaseService: Storing user with hash');
-    console.log('🔍 Generated hash during registration:', hash);
-    console.log('🔍 Salt during registration:', salt);
+    // Store user with securely generated hash (sensitive values not logged)
 
     const user: User = {
       id,
@@ -729,17 +721,10 @@ export class DatabaseService {
           return null;
         }
 
-        console.log('🔍 DatabaseService: About to hash password for comparison');
-        console.log('🔍 Input password:', password);
-        console.log('🔍 Stored salt:', user.salt);
-        
+        // Hash password for comparison (sensitive values not logged)
         const { hash } = await this.hashPassword(password, user.salt);
         
-        console.log('🔍 DatabaseService: Comparing hashes for login');
-        console.log('🔍 Generated hash:', hash);
-        console.log('🔍 Stored hash:', user.password_hash);
-        console.log('🔍 Salt used:', user.salt);
-        console.log('🔍 Hash match result:', hash === user.password_hash);
+        // Compare hashes without logging sensitive values
         
         if (hash === user.password_hash) {
           console.log('✅ DatabaseService: Web authentication successful');
@@ -941,7 +926,6 @@ export class DatabaseService {
     console.log('💾 DatabaseService: Saving health data with ID:', id);
     console.log('💾 DatabaseService: User ID:', data.userId);
     console.log('💾 DatabaseService: Symptoms (type):', typeof data.symptoms);
-    console.log('💾 DatabaseService: Symptoms (value):', data.symptoms);
     console.log('💾 DatabaseService: Should encrypt:', shouldEncrypt);
     
     const encryptedSymptoms = shouldEncrypt ? this.encrypt(data.symptoms) : data.symptoms;

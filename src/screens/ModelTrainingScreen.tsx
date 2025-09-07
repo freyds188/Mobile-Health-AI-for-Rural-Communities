@@ -66,10 +66,10 @@ const ModelTrainingScreen = () => {
   };
 
   const openScriptFile = () => {
-    const scriptPath = Platform.OS === 'win32' ? 'train_kmeans.bat' : 'train_kmeans.sh';
+    const scriptPath = 'train_kmeans.bat / train_kmeans.sh';
     Alert.alert(
       'Script Location',
-      `The training script is located at:\n\n${scriptPath}\n\nPlease run this script from your terminal to train the K-means model.`
+      `The training scripts are located at:\n\n${scriptPath}\n\nRun the appropriate one for your OS from the project directory.`
     );
   };
 
@@ -78,7 +78,7 @@ const ModelTrainingScreen = () => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Ionicons name="brain" size={32} color="#007AFF" />
+          <Ionicons name="analytics" size={32} color="#007AFF" />
           <Text style={styles.headerTitle}>K-means Model Training</Text>
           <Text style={styles.headerSubtitle}>
             Train the AI model using external scripts

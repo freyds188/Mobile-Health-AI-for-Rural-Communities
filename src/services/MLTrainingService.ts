@@ -5,7 +5,6 @@
 
 import { MachineLearningService, HealthDataInput, MLAnalysisResult } from './MachineLearningService';
 import DatasetLoader from '../utils/DatasetLoader';
-import DataImportService from './DataImportService';
 
 export interface TrainingConfig {
   datasetPath: string;
@@ -45,11 +44,21 @@ export interface TrainingResult {
 
 export class MLTrainingService {
   private mlService: MachineLearningService;
-  private dataImportService: DataImportService;
+  private dataImportService: any;
   
   constructor() {
     this.mlService = new MachineLearningService();
-    this.dataImportService = new DataImportService();
+  }
+
+  /**
+   * Lazy-load DataImportService to avoid React Native dependencies in Node scripts
+   */
+  private async ensureDataImportService(): Promise<void> {
+    if (!this.dataImportService) {
+      const module = await import('./DataImportService');
+      const DataImportService = module.default || module.DataImportService;
+      this.dataImportService = new DataImportService();
+    }
   }
 
   /**
@@ -228,6 +237,7 @@ export class MLTrainingService {
     console.log('📥 Training with imported CSV datasets...');
     
     try {
+      await this.ensureDataImportService();
       // Import the provided datasets
       console.log('📊 Importing training datasets...');
       const importResults = await this.dataImportService.importProvidedDatasets();
@@ -268,6 +278,7 @@ export class MLTrainingService {
     console.log('👥 Training with real user data from the app...');
     
     try {
+      await this.ensureDataImportService();
       // Get real user data from the database
       const realUserData = await this.dataImportService.getImportedDataForTraining(userId);
       
@@ -304,6 +315,7 @@ export class MLTrainingService {
     console.log('🔄 Starting hybrid training (datasets + real users)...');
     
     try {
+      await this.ensureDataImportService();
       // Import datasets if not already imported
       console.log('📊 Ensuring datasets are imported...');
       await this.dataImportService.importProvidedDatasets();
@@ -351,6 +363,7 @@ export class MLTrainingService {
     try {
       console.log('📊 Analyzing available training data...');
       
+      await this.ensureDataImportService();
       const importedStats = await this.dataImportService.getImportedDataStats();
       const realUserData = await this.dataImportService.getImportedDataForTraining();
       

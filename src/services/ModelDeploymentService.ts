@@ -4,7 +4,16 @@
  * Implements risk levels and continuous learning capabilities
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+let AsyncStorage: any;
+try {
+  // Only require AsyncStorage when running in React Native/web environments
+  if (typeof window !== 'undefined') {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    AsyncStorage = require('@react-native-async-storage/async-storage').default;
+  }
+} catch {
+  AsyncStorage = null;
+}
 import { HealthDataInput } from './MachineLearningService';
 
 export interface DeployedModel {
@@ -353,6 +362,7 @@ export class ModelDeploymentService {
   // Private helper methods
   private async loadDeployedModel(): Promise<void> {
     try {
+      if (!AsyncStorage) return;
       const modelData = await AsyncStorage.getItem('deployed_model');
       if (modelData) {
         this.deployedModel = JSON.parse(modelData);
@@ -365,6 +375,7 @@ export class ModelDeploymentService {
 
   private async saveDeployedModel(): Promise<void> {
     try {
+      if (!AsyncStorage) return;
       await AsyncStorage.setItem('deployed_model', JSON.stringify(this.deployedModel));
     } catch (error) {
       console.error('Failed to save deployed model:', error);

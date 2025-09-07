@@ -25,6 +25,7 @@ npx ts-node src/scripts/trainKMeansModel.ts
 
 if [ $? -eq 0 ]; then
     echo
+    echo "📚 For detailed instructions, see: README.md"
     echo "✅ K-means training completed successfully!"
     echo
     echo "📋 Training Summary:"
