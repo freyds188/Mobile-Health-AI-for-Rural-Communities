@@ -827,6 +827,11 @@ export class DataService {
     }
   }
 
+  async clearChatHistory(userId: string): Promise<void> {
+    await this.ensureInitialized();
+    await databaseService.deleteChatHistory(userId);
+  }
+
   // Analytics and Reporting
   async getAnalytics(): Promise<AnalyticsData> {
     await this.ensureInitialized();

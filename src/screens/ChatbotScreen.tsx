@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -98,10 +98,13 @@ const DURATION_OPTIONS: ChatOption[] = [
 ];
 
 const ChatbotScreen: React.FC = () => {
-  const { messages, sendMessage, isTyping, isLoading } = useChatbot();
+  const { messages, sendMessage, isTyping, isLoading, loadChatHistory, clearChatHistory } = useChatbot();
   const { user } = useAuth();
   const [inputText, setInputText] = useState('');
   const [showSeverityModal, setShowSeverityModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyLimit, setHistoryLimit] = useState(100);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [showSymptomModal, setShowSymptomModal] = useState(false);
   const [selectedSeverity, setSelectedSeverity] = useState<number | null>(null);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
@@ -210,7 +213,7 @@ const ChatbotScreen: React.FC = () => {
     setInputText(message);
   };
 
-  const handleChatOption = async (option: ChatOption) => {
+  const handleChatOption = useCallback(async (option: ChatOption) => {
     let message = '';
     switch (option.type) {
       case 'severity':
@@ -232,9 +235,9 @@ const ChatbotScreen: React.FC = () => {
     if (message) {
       await sendMessage(message);
     }
-  };
+  }, [sendMessage]);
 
-  const renderChatOptions = (options: ChatOption[]) => (
+  const renderChatOptions = useCallback((options: ChatOption[]) => (
     <View style={styles.chatOptionsContainer}>
       {options.map((option) => (
         <TouchableOpacity
@@ -249,9 +252,9 @@ const ChatbotScreen: React.FC = () => {
         </TouchableOpacity>
       ))}
     </View>
-  );
+  ), [handleChatOption]);
 
-  const renderMessage = ({ item }: { item: any }) => (
+  const renderMessage = useCallback(({ item }: { item: any }) => (
     <Animated.View 
       style={[
         styles.messageContainer,
@@ -306,7 +309,9 @@ const ChatbotScreen: React.FC = () => {
         })}
       </Text>
     </Animated.View>
-  );
+  ), [renderChatOptions]);
+
+  const keyExtractor = useCallback((item: any) => item.id, []);
 
   const renderSeverityModal = () => (
     <Modal
@@ -438,8 +443,23 @@ const ChatbotScreen: React.FC = () => {
             </View>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerButton}>
-              <Ionicons name="settings-outline" size={24} color="#2E7D32" />
+            <TouchableOpacity 
+              style={styles.headerButton} 
+              onPress={async () => {
+                try {
+                  setIsHistoryLoading(true);
+                  setHistoryLimit(100);
+                  await loadChatHistory(100);
+                  setShowHistoryModal(true);
+                } finally {
+                  setIsHistoryLoading(false);
+                }
+              }}
+            >
+              <Ionicons name="time-outline" size={24} color="#2E7D32" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerButton} onPress={clearChatHistory}>
+              <Ionicons name="trash-outline" size={24} color="#D32F2F" />
             </TouchableOpacity>
           </View>
         </View>
@@ -481,10 +501,15 @@ const ChatbotScreen: React.FC = () => {
           ref={flatListRef}
           data={messages}
           renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           style={styles.messagesList}
           contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={12}
+          maxToRenderPerBatch={8}
+          windowSize={7}
+          removeClippedSubviews
+          updateCellsBatchingPeriod={50}
         />
         
         {isTyping && (
@@ -534,6 +559,70 @@ const ChatbotScreen: React.FC = () => {
       </View>
 
       {renderSeverityModal()}
+      <Modal
+        visible={showHistoryModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowHistoryModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBackground}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Chat History</Text>
+                <TouchableOpacity
+                  onPress={() => setShowHistoryModal(false)}
+                  style={styles.closeButton}
+                >
+                  <Ionicons name="close" size={24} color="#666" />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.historyListContainer}>
+                <FlatList
+                  data={[...messages].sort((a: any, b: any) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())}
+                  keyExtractor={(item: any) => item.id}
+                  renderItem={({ item }: { item: any }) => (
+                    <View style={[styles.historyItem, item.isUser ? styles.historyUserItem : styles.historyBotItem]}>
+                      <Text style={styles.historyItemText}>{item.text}</Text>
+                      <Text style={styles.historyItemMeta}>{new Date(item.timestamp).toLocaleString()}</Text>
+                    </View>
+                  )}
+                  ListFooterComponent={
+                    <View style={styles.historyFooter}>
+                      <TouchableOpacity
+                        style={styles.historyLoadMore}
+                        onPress={async () => {
+                          const next = historyLimit + 200;
+                          setHistoryLimit(next);
+                          setIsHistoryLoading(true);
+                          try {
+                            await loadChatHistory(next);
+                          } finally {
+                            setIsHistoryLoading(false);
+                          }
+                        }}
+                      >
+                        <Text style={styles.historyLoadMoreText}>{isHistoryLoading ? 'Loading…' : 'Load more'}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  }
+                />
+              </View>
+              <View style={styles.modalFooter}>
+                <TouchableOpacity
+                  style={styles.submitButton}
+                  onPress={async () => {
+                    await clearChatHistory();
+                  }}
+                >
+                  <Ionicons name="trash-outline" size={24} color="#ffffff" />
+                  <Text style={styles.submitButtonText}>Clear History</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -1002,6 +1091,47 @@ const styles = StyleSheet.create({
   },
   modalFooter: {
     marginTop: 25,
+  },
+  historyListContainer: {
+    maxHeight: 450,
+  },
+  historyItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#e8f5e8',
+  },
+  historyUserItem: {
+    backgroundColor: '#f0fff3',
+  },
+  historyBotItem: {
+    backgroundColor: '#ffffff',
+  },
+  historyItemText: {
+    fontSize: 14,
+    color: '#333',
+    fontFamily: fontFamily.body,
+  },
+  historyItemMeta: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#999',
+    fontFamily: fontFamily.body,
+  },
+  historyFooter: {
+    paddingTop: 8,
+    alignItems: 'center',
+  },
+  historyLoadMore: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  historyLoadMoreText: {
+    color: '#2E7D32',
+    fontWeight: '600',
+    fontFamily: fontFamily.body,
   },
   submitButton: {
     backgroundColor: '#2E7D32',

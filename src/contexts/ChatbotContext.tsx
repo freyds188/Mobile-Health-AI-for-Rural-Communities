@@ -32,7 +32,8 @@ interface ChatbotContextType {
   sendMessage: (text: string) => Promise<void>;
   clearChat: () => void;
   extractSymptoms: (text: string) => Promise<SymptomData>;
-  loadChatHistory: () => Promise<void>;
+  loadChatHistory: (limit?: number) => Promise<void>;
+  clearChatHistory: () => Promise<void>;
 }
 
 const ChatbotContext = createContext<ChatbotContextType | undefined>(undefined);
@@ -83,12 +84,12 @@ export const ChatbotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const loadChatHistory = async () => {
+  const loadChatHistory = async (limit: number = 100) => {
     if (!user) return;
 
     try {
       setIsLoading(true);
-      const chatHistory = await dataService.getChatHistory(user.id, 50);
+      const chatHistory = await dataService.getChatHistory(user.id, limit);
       
       const formattedMessages: ChatMessage[] = chatHistory.map(msg => ({
         id: msg.id,
@@ -99,9 +100,39 @@ export const ChatbotProvider: React.FC<{ children: React.ReactNode }> = ({ child
         intent: msg.nlpAnalysis?.intent.intent
       }));
       
-      setMessages(formattedMessages);
+      // Merge with existing messages without losing current session
+      setMessages(prev => {
+        const byId = new Map<string, ChatMessage>();
+        for (const m of prev) byId.set(m.id, m);
+        for (const m of formattedMessages) byId.set(m.id, m);
+        const merged = Array.from(byId.values());
+        merged.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        return merged;
+      });
     } catch (error) {
       console.error('Failed to load chat history:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const clearChatHistory = async () => {
+    if (!user) return;
+    try {
+      setIsLoading(true);
+      await dataService.clearChatHistory(user.id);
+      setMessages([]);
+      // Re-add welcome message after clearing
+      const welcomeMessage: ChatMessage = {
+        id: 'welcome-' + Date.now(),
+        text: `Hello ${user.name}! How can I assist you today?`,
+        isUser: false,
+        timestamp: new Date(),
+        intent: 'greeting'
+      };
+      setMessages([welcomeMessage]);
+    } catch (error) {
+      console.error('Failed to clear chat history:', error);
     } finally {
       setIsLoading(false);
     }
@@ -139,23 +170,24 @@ export const ChatbotProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       setMessages(prev => [...prev, botMessage]);
 
-      // Save to database
-      await databaseService.saveChatMessage({
-        userId: user.id,
-        text: text.trim(),
-        isUser: true,
-        timestamp: new Date().toISOString(),
-        symptoms: processedMessage.entities.length > 0 ? JSON.stringify(processedMessage.entities) : undefined,
-        intent: processedMessage.intent
-      });
-
-      await databaseService.saveChatMessage({
-        userId: user.id,
-        text: processedMessage.response,
-        isUser: false,
-        timestamp: new Date().toISOString(),
-        intent: 'response'
-      });
+      // Save to database (batched transaction)
+      await databaseService.saveChatMessagesBatch([
+        {
+          userId: user.id,
+          text: text.trim(),
+          isUser: true,
+          timestamp: new Date().toISOString(),
+          symptoms: processedMessage.entities.length > 0 ? JSON.stringify(processedMessage.entities) : undefined,
+          intent: processedMessage.intent
+        },
+        {
+          userId: user.id,
+          text: processedMessage.response,
+          isUser: false,
+          timestamp: new Date().toISOString(),
+          intent: 'response'
+        }
+      ]);
 
     } catch (error) {
       console.error('Error processing message:', error);
@@ -220,7 +252,8 @@ export const ChatbotProvider: React.FC<{ children: React.ReactNode }> = ({ child
     sendMessage,
     clearChat,
     extractSymptoms,
-    loadChatHistory
+    loadChatHistory,
+    clearChatHistory
   };
 
   return (

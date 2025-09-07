@@ -361,6 +361,76 @@ export class DatabaseService {
                   setTimeout(() => successCallback(tx, result), 0);
                 }
               }
+              // Handle INSERT operations for chat_messages
+              else if (sql.includes('INSERT INTO chat_messages')) {
+                const [id, userId, text, isUser, timestamp, symptoms, intent, processed, encrypted, createdAt] = params;
+                const message = {
+                  id,
+                  user_id: userId,
+                  text,
+                  is_user: isUser,
+                  timestamp,
+                  symptoms,
+                  intent,
+                  processed,
+                  encrypted,
+                  created_at: createdAt
+                };
+
+                const key = `chat_message_${id}`;
+                this.webStorage.set(key, message);
+                this.saveWebStorage();
+                console.log('✅ Web DB: Chat message saved with ID:', id);
+
+                if (successCallback) {
+                  setTimeout(() => successCallback(tx, result), 0);
+                }
+              }
+              // Handle SELECT operations for chat_messages
+              else if (sql.includes('SELECT * FROM chat_messages WHERE user_id = ?')) {
+                const userId = params[0];
+                const maybeLimit = params[1];
+
+                const records: any[] = [];
+                for (const [key, value] of this.webStorage.entries()) {
+                  if (key.startsWith('chat_message_') && value.user_id === userId) {
+                    records.push(value);
+                  }
+                }
+
+                // Default order is ASC in query; sort ascending by timestamp
+                records.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+                const limitedRecords = typeof maybeLimit === 'number' ? records.slice(0, maybeLimit) : records;
+
+                result.rows = {
+                  length: limitedRecords.length,
+                  item: (i: number) => limitedRecords[i],
+                  _array: limitedRecords
+                };
+
+                console.log('💬 Web DB: Retrieved', limitedRecords.length, 'chat messages for user:', userId);
+
+                if (successCallback) {
+                  setTimeout(() => successCallback(tx, result), 0);
+                }
+              }
+              // Handle DELETE operations for chat_messages
+              else if (sql.includes('DELETE FROM chat_messages WHERE user_id = ?')) {
+                const userId = params[0];
+                const toDelete: string[] = [];
+                for (const [key, value] of this.webStorage.entries()) {
+                  if (key.startsWith('chat_message_') && value.user_id === userId) {
+                    toDelete.push(key);
+                  }
+                }
+                toDelete.forEach(k => this.webStorage.delete(k));
+                this.saveWebStorage();
+                console.log('🧹 Web DB: Deleted', toDelete.length, 'chat messages for user:', userId);
+
+                if (successCallback) {
+                  setTimeout(() => successCallback(tx, result), 0);
+                }
+              }
               // Handle other operations (users, etc.)
               else {
                 console.log('⚠️ Web DB: Unhandled SQL operation:', sql);
@@ -1125,6 +1195,38 @@ export class DatabaseService {
     });
   }
 
+  async saveChatMessagesBatch(messages: Array<Omit<ChatMessage, 'id' | 'createdAt' | 'encrypted' | 'processed'>>): Promise<string[]> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    const ids: string[] = [];
+    const now = new Date().toISOString();
+    const shouldEncrypt = this.config.encryption;
+
+    return new Promise((resolve, reject) => {
+      this.db!.transaction(tx => {
+        for (const msg of messages) {
+          const id = uuidv4();
+          ids.push(id);
+          const encryptedText = shouldEncrypt ? this.encrypt(msg.text) : msg.text;
+          tx.executeSql(
+            `INSERT INTO chat_messages (id, user_id, text, is_user, timestamp, symptoms, intent, processed, encrypted, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              id, msg.userId, encryptedText, msg.isUser ? 1 : 0,
+              msg.timestamp, msg.symptoms || null, msg.intent || null,
+              0, shouldEncrypt ? 1 : 0, now
+            ]
+          );
+        }
+      }, 
+      (error) => {
+        console.error('Save chat messages batch failed:', error);
+        reject(error);
+      },
+      () => resolve(ids));
+    });
+  }
+
   async getChatMessages(userId: string, limit?: number): Promise<ChatMessage[]> {
     if (!this.db) throw new Error('Database not initialized');
 
@@ -1168,6 +1270,21 @@ export class DatabaseService {
           }
         );
       });
+    });
+  }
+
+  async deleteChatHistory(userId: string): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    return new Promise((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql('DELETE FROM chat_messages WHERE user_id = ?', [userId]);
+      }, 
+      (error) => {
+        console.error('Delete chat history failed:', error);
+        reject(error);
+      },
+      () => resolve());
     });
   }
 
