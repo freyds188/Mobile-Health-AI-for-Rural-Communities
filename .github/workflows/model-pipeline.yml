@@ -1,0 +1,43 @@
+name: Model Pipeline & Publish Manifest
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'src/scripts/**'
+      - 'src/services/**'
+      - 'training_*.csv'
+      - 'enhanced_training_dataset.csv'
+      - 'comprehensive_symptom_dataset.csv'
+      - 'rural_health_dataset.csv'
+      - 'mental_health_dataset.csv'
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - run: npm ci
+      - name: Validate and deploy current model
+        run: |
+          npm run validate:model || true
+          npm run deploy:model
+      - name: Generate model manifest
+        run: |
+          npm run generate:model-manifest
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
+

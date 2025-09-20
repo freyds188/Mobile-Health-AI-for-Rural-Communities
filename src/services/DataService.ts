@@ -544,8 +544,8 @@ export class DataService {
         }
       }
 
-      // Save to database
-      const recordId = await databaseService.saveHealthData({
+      // Save to database (enqueue offline if needed)
+      const payload = {
         userId,
         timestamp: healthData.timestamp.toISOString(),
         symptoms: JSON.stringify(validation.sanitizedData.symptoms),
@@ -555,23 +555,31 @@ export class DataService {
         exercise: validation.sanitizedData.behavior.exercise,
         diet: validation.sanitizedData.behavior.diet,
         notes: validation.sanitizedData.notes
-      });
+      } as const;
 
-      console.log('✅ DataService: Health data saved with ID:', recordId);
-
-      // Log action
       try {
-        await securityService.logAction(userId, 'health_data_saved', 'health_record', true, { 
-          recordId,
-          severity: validation.sanitizedData.severity,
-          symptomsCount: validation.sanitizedData.symptoms.length 
-        });
-      } catch (logError) {
-        console.warn('⚠️ DataService: Security logging failed:', logError);
-        // Continue even if logging fails
+        const recordId = await databaseService.saveHealthData(payload);
+        console.log('✅ DataService: Health data saved with ID:', recordId);
+        // Log action
+        try {
+          await securityService.logAction(userId, 'health_data_saved', 'health_record', true, { 
+            recordId,
+            severity: validation.sanitizedData.severity,
+            symptomsCount: validation.sanitizedData.symptoms.length 
+          });
+        } catch {}
+        return recordId;
+      } catch (e) {
+        // If offline/network/db issue, queue for retry
+        try {
+          const { offlineQueue } = await import('../utils/OfflineQueue');
+          await offlineQueue.enqueue({ id: `save-${Date.now()}`, type: 'saveHealthData', payload, });
+          console.warn('⚠️ DataService: Queued health data for later sync');
+          return `queued-${Date.now()}`;
+        } catch (qerr) {
+          throw e;
+        }
       }
-
-      return recordId;
     } catch (error) {
       console.error('❌ DataService: Health data save failed:', error);
       
@@ -714,40 +722,50 @@ export class DataService {
       };
     }
 
-    const sortedRecords = records.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-    const recent = sortedRecords.slice(-Math.min(5, sortedRecords.length));
-    const older = sortedRecords.slice(0, Math.min(5, sortedRecords.length));
+    const sortedRecords = records.slice().sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
-    const calculateTrend = (recentAvg: number, olderAvg: number, isInverse: boolean = false) => {
-      const threshold = 0.5;
-      const diff = recentAvg - olderAvg;
-      
-      if (Math.abs(diff) < threshold) return 'stable';
-      
-      if (isInverse) {
-        return diff > 0 ? 'worsening' : 'improving';
-      } else {
-        return diff > 0 ? 'improving' : 'worsening';
+    // Exponential weighted moving averages for smoothing
+    const ewma = (values: number[], alpha = 0.5) => {
+      let prev = values[0];
+      const out: number[] = [];
+      for (const v of values) {
+        prev = alpha * v + (1 - alpha) * prev;
+        out.push(prev);
       }
+      return out;
     };
 
-    const recentAvgSeverity = recent.reduce((sum, r) => sum + r.severity, 0) / recent.length;
-    const olderAvgSeverity = older.reduce((sum, r) => sum + r.severity, 0) / older.length;
+    const values = {
+      severity: sortedRecords.map(r => r.severity),
+      sleep: sortedRecords.map(r => r.behavior.sleep),
+      stress: sortedRecords.map(r => r.behavior.stress),
+      exercise: sortedRecords.map(r => r.behavior.exercise),
+    };
 
-    const recentAvgSleep = recent.reduce((sum, r) => sum + r.behavior.sleep, 0) / recent.length;
-    const olderAvgSleep = older.reduce((sum, r) => sum + r.behavior.sleep, 0) / older.length;
+    const smoothed = {
+      severity: ewma(values.severity),
+      sleep: ewma(values.sleep),
+      stress: ewma(values.stress),
+      exercise: ewma(values.exercise),
+    };
 
-    const recentAvgStress = recent.reduce((sum, r) => sum + r.behavior.stress, 0) / recent.length;
-    const olderAvgStress = older.reduce((sum, r) => sum + r.behavior.stress, 0) / older.length;
-
-    const recentAvgExercise = recent.reduce((sum, r) => sum + r.behavior.exercise, 0) / recent.length;
-    const olderAvgExercise = older.reduce((sum, r) => sum + r.behavior.exercise, 0) / older.length;
+    const trendOf = (arr: number[], inverse = false) => {
+      const n = arr.length;
+      if (n < 3) return 'stable' as const;
+      const first = arr[Math.max(0, n - 5)];
+      const last = arr[n - 1];
+      const diff = last - first;
+      const threshold = Math.max(0.5, Math.abs(first) * 0.05);
+      if (Math.abs(diff) < threshold) return 'stable' as const;
+      if (inverse) return diff > 0 ? 'worsening' as const : 'improving' as const;
+      return diff > 0 ? 'improving' as const : 'worsening' as const;
+    };
 
     return {
-      severityTrend: calculateTrend(recentAvgSeverity, olderAvgSeverity, true),
-      sleepTrend: calculateTrend(recentAvgSleep, olderAvgSleep),
-      stressTrend: calculateTrend(recentAvgStress, olderAvgStress, true),
-      exerciseTrend: calculateTrend(recentAvgExercise, olderAvgExercise)
+      severityTrend: trendOf(smoothed.severity, true),
+      sleepTrend: trendOf(smoothed.sleep),
+      stressTrend: trendOf(smoothed.stress, true),
+      exerciseTrend: trendOf(smoothed.exercise),
     };
   }
 

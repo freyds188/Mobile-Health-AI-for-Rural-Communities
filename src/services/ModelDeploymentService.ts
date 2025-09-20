@@ -81,6 +81,7 @@ export interface ContinuousLearningConfig {
 export class ModelDeploymentService {
   private deployedModel: DeployedModel | null = null;
   private learningConfig: ContinuousLearningConfig;
+  private registryManifestUrl: string | null = null;
   private predictionHistory: Array<{
     input: HealthDataInput;
     prediction: RiskAssessment;
@@ -153,6 +154,59 @@ export class ModelDeploymentService {
       console.error('❌ Model deployment failed:', error);
       throw error;
     }
+  }
+
+  /**
+   * Configure a remote model registry manifest for auto-updates
+   */
+  setRegistryManifestUrl(url: string): void {
+    this.registryManifestUrl = url;
+  }
+
+  /**
+   * Check remote registry for newer models and download if newer
+   */
+  async checkForModelUpdates(): Promise<{ updated: boolean; newVersion?: string }> {
+    if (!this.registryManifestUrl) return { updated: false };
+    try {
+      const { ModelRegistryClient } = await import('./ModelRegistryClient');
+      const client = new ModelRegistryClient(this.registryManifestUrl);
+      const manifest = await client.fetchManifest();
+      if (!manifest) return { updated: false };
+
+      const currentVersion = this.deployedModel?.version || '0.0.0';
+      if (this.isNewerVersion(manifest.version, currentVersion)) {
+        // Download deployed model JSON if available
+        if (manifest.files?.deployedModel) {
+          const localUri = await client.downloadFile(manifest.files.deployedModel, 'deployed-model.json');
+          if (localUri) {
+            // Load file and set as new deployed model
+            const fs = require('expo-file-system');
+            const content = await fs.readAsStringAsync(localUri);
+            const deployedModel = JSON.parse(content) as DeployedModel;
+            this.deployedModel = deployedModel;
+            await this.saveDeployedModel();
+            return { updated: true, newVersion: deployedModel.version };
+          }
+        }
+      }
+      return { updated: false };
+    } catch (e) {
+      console.warn('Model update check failed:', e);
+      return { updated: false };
+    }
+  }
+
+  private isNewerVersion(a: string, b: string): boolean {
+    const pa = a.split('.').map(n => parseInt(n || '0', 10));
+    const pb = b.split('.').map(n => parseInt(n || '0', 10));
+    for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+      const da = pa[i] || 0;
+      const db = pb[i] || 0;
+      if (da > db) return true;
+      if (da < db) return false;
+    }
+    return false;
   }
 
   /**

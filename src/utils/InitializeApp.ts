@@ -1,5 +1,8 @@
 import { dataService } from '../services/DataService';
 import { securityService } from '../services/SecurityService';
+import ModelDeploymentService from '../services/ModelDeploymentService';
+import { notificationService } from '../services/NotificationService';
+import { offlineQueue } from './OfflineQueue';
 
 export const initializeApp = async (): Promise<boolean> => {
   try {
@@ -41,6 +44,37 @@ export const initializeApp = async (): Promise<boolean> => {
     }
     
     console.log('✅ App initialization completed successfully');
+    
+    // Configure model registry and check updates (optional public manifest URL)
+    try {
+      const modelDeployment = new ModelDeploymentService();
+      // Example: host manifest yourself; keep null if none
+      // modelDeployment.setRegistryManifestUrl('https://example.com/deployed-model-config.json');
+      await modelDeployment.checkForModelUpdates();
+    } catch {}
+    
+    // Notifications: request permissions and schedule daily reminder
+    try {
+      await notificationService.requestPermissions();
+      await notificationService.scheduleDailyReminder(19);
+    } catch {}
+
+    // Drain offline queue (best-effort)
+    try {
+      await offlineQueue.load();
+      await offlineQueue.drain(async (op) => {
+        if (op.type === 'saveHealthData') {
+          try {
+            // @ts-ignore payload shape enforced at enqueue site
+            await dataService.getDatabaseService().saveHealthData(op.payload);
+            return true;
+          } catch {
+            return false;
+          }
+        }
+        return true;
+      });
+    } catch {}
     
     // Create demo user for immediate functionality (especially on web)
     if (typeof window !== 'undefined') {

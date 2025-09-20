@@ -18,6 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useHealthData } from '../contexts/HealthDataContext';
 import { dataService, AnalyticsData } from '../services/DataService';
+import { exportService } from '../utils/ExportService';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -562,6 +563,36 @@ const DashboardScreen = () => {
             </View>
           </View>
         )}
+
+        {/* Export quick action */}
+        <View style={{ marginHorizontal: 20 }}>
+          <TouchableOpacity 
+            style={styles.symptomAnalysisButton}
+            onPress={async () => {
+              try {
+                const rows = healthData
+                  .filter(d => d.userId === user.id)
+                  .map(d => ({
+                    timestamp: d.timestamp.toISOString(),
+                    severity: d.severity,
+                    sleep: d.behavior.sleep,
+                    stress: d.behavior.stress,
+                    exercise: d.behavior.exercise,
+                    diet: d.behavior.diet,
+                    symptoms: d.symptoms.join('|'),
+                    notes: d.notes,
+                  }));
+                const uri = await exportService.exportCSV('health_data.csv', rows);
+                await exportService.shareFile(uri);
+              } catch (e) {
+                Alert.alert('Export failed', 'Could not export your data.');
+              }
+            }}
+          >
+            <Ionicons name="download" size={22} color="#fff" />
+            <Text style={styles.symptomAnalysisButtonText}>Export My Data (CSV)</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Empty State */}
         {dashboardStats.totalRecords === 0 && (

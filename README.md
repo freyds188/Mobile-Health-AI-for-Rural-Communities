@@ -95,6 +95,10 @@ npm run train:basic && npm run validate:model
 1) Train a model (see above).
 2) Ensure `deployed-model-config.json` points to your intended model/output.
 3) Start the app with `npm start` and use the risk assessment and chatbot screens.
+4) Optional: Host your model artifacts
+   - Run `npm run generate:model-manifest` (creates `public/model-manifest.json` with `nlp-model.json` and `deployed-model-config.json`).
+   - Enable GitHub Pages for the repo; the CI workflow `.github/workflows/model-pipeline.yml` publishes to Pages on push.
+   - In code (e.g., `InitializeApp`), set the manifest URL via `ModelDeploymentService#setRegistryManifestUrl('https://<user>.github.io/<repo>/model-manifest.json')`.
 
 ## NLP Workflow (Optional)
 

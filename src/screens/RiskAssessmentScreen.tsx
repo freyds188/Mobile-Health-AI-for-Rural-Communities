@@ -15,6 +15,8 @@ import { riskAssessmentService, RiskAssessment } from '../services/RiskAssessmen
 import { DatabaseInitializationHelper } from '../utils/DatabaseInitializationHelper';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { notificationService } from '../services/NotificationService';
+import ModelDeploymentService from '../services/ModelDeploymentService';
 
 // Available symptoms for selection
 const AVAILABLE_SYMPTOMS = {
@@ -100,6 +102,7 @@ const RiskAssessmentScreen = () => {
       const result = await riskAssessmentService.performRiskAssessment(user.id, selectedSymptoms);
       console.log('📊 RiskAssessmentScreen: Assessment result:', result);
       setAssessment(result);
+      try { await notificationService.sendRiskAlert(result.overallRisk as any); } catch {}
       console.log('✅ RiskAssessmentScreen: Symptom analysis completed');
     } catch (error) {
       console.error('❌ RiskAssessmentScreen: Symptom analysis failed:', error);

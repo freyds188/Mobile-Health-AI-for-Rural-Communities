@@ -70,6 +70,12 @@ interface ChatMessage {
   createdAt: string;
 }
 
+interface CachedContentRow {
+  key: string;
+  value: string;
+  updatedAt: string;
+}
+
 export class DatabaseService {
   private db: SQLite.WebSQLDatabase | null = null;
   private config: DatabaseConfig;
@@ -641,6 +647,15 @@ export class DatabaseService {
         tx.executeSql('CREATE INDEX IF NOT EXISTS idx_health_insights_user_timestamp ON health_insights (user_id, timestamp);');
         tx.executeSql('CREATE INDEX IF NOT EXISTS idx_chat_messages_user_timestamp ON chat_messages (user_id, timestamp);');
         tx.executeSql('CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);');
+
+        // Cached content table
+        tx.executeSql(`
+          CREATE TABLE IF NOT EXISTS cached_content (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+          );
+        `);
       }, 
       (error) => {
         console.error('Create tables failed:', error);
@@ -649,6 +664,47 @@ export class DatabaseService {
       () => {
         console.log('Tables created successfully');
         resolve();
+      });
+    });
+  }
+
+  // Simple cache helpers for external content
+  async cacheContent(key: string, value: any): Promise<void> {
+    if (this.isWebPlatform) {
+      this.webStorage.set(`cache:${key}`, { key, value, updatedAt: new Date().toISOString() });
+      return;
+    }
+    await this.ensureDb();
+    await new Promise<void>((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `INSERT OR REPLACE INTO cached_content (key, value, updated_at) VALUES (?, ?, ?)`,
+          [key, JSON.stringify(value), new Date().toISOString()],
+          () => resolve(),
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+  }
+
+  async getCachedContent(key: string): Promise<any | null> {
+    if (this.isWebPlatform) {
+      const row = this.webStorage.get(`cache:${key}`);
+      return row?.value || null;
+    }
+    await this.ensureDb();
+    return await new Promise<any | null>((resolve) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `SELECT value FROM cached_content WHERE key = ? LIMIT 1`,
+          [key],
+          (_tx, rs) => {
+            if (rs.rows.length > 0) {
+              try { resolve(JSON.parse(rs.rows.item(0).value)); }
+              catch { resolve(null); }
+            } else resolve(null);
+          }
+        );
       });
     });
   }

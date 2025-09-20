@@ -1,26 +1,17 @@
 import { v4 as uuidv4 } from 'uuid';
 let AsyncStorage: any;
-let fs: any = null;
-let pathMod: any = null;
-const isNodeEnv = typeof window === 'undefined';
+let ExpoFileSystem: any = null;
 try {
-  if (!isNodeEnv) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    AsyncStorage = require('@react-native-async-storage/async-storage').default;
-  }
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  AsyncStorage = require('@react-native-async-storage/async-storage').default;
 } catch {
   AsyncStorage = null;
 }
-if (isNodeEnv) {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    fs = require('fs');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    pathMod = require('path');
-  } catch {
-    fs = null;
-    pathMod = null;
-  }
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  ExpoFileSystem = require('expo-file-system');
+} catch {
+  ExpoFileSystem = null;
 }
 
 // Types and Interfaces
@@ -118,7 +109,7 @@ class AdvancedNLPService {
   private readonly VOCABULARY_SIZE = 10000;
   private readonly VECTOR_DIMENSION = 100;
   private conversationState: ConversationState;
-  private readonly modelFilePath: string | null = isNodeEnv && pathMod ? pathMod.join(process.cwd(), 'nlp-model.json') : null;
+  private readonly modelFileName: string = 'nlp-model.json';
 
   constructor() {
     this.model = this.initializeModel();
@@ -500,8 +491,14 @@ class AdvancedNLPService {
       let savedModel: string | null = null;
       if (AsyncStorage) {
         savedModel = await AsyncStorage.getItem(this.MODEL_KEY);
-      } else if (this.modelFilePath && fs && fs.existsSync(this.modelFilePath)) {
-        savedModel = fs.readFileSync(this.modelFilePath, 'utf-8');
+      }
+      if (!savedModel && ExpoFileSystem) {
+        const dir = ExpoFileSystem.cacheDirectory || ExpoFileSystem.documentDirectory;
+        const fileUri = `${dir}${this.modelFileName}`;
+        const info = await ExpoFileSystem.getInfoAsync(fileUri);
+        if (info.exists) {
+          savedModel = await ExpoFileSystem.readAsStringAsync(fileUri);
+        }
       }
       if (savedModel) {
         const parsedModel = JSON.parse(savedModel);
@@ -517,6 +514,26 @@ class AdvancedNLPService {
     }
   }
 
+  // Try to reload model from Expo FileSystem (downloaded via registry)
+  async reloadFromFileSystemIfAvailable(): Promise<boolean> {
+    try {
+      if (!ExpoFileSystem) return false;
+      const dir = ExpoFileSystem.cacheDirectory || ExpoFileSystem.documentDirectory;
+      const fileUri = `${dir}${this.modelFileName}`;
+      const info = await ExpoFileSystem.getInfoAsync(fileUri);
+      if (!info.exists) return false;
+      const content = await ExpoFileSystem.readAsStringAsync(fileUri);
+      const parsed = JSON.parse(content);
+      parsed.vocabulary = new Set(parsed.vocabulary);
+      this.model = parsed;
+      await this.saveModel();
+      console.log('✅ Advanced NLP Model reloaded from FileSystem');
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   private async saveModel(): Promise<void> {
     try {
       // Convert Set to array for storage
@@ -528,9 +545,11 @@ class AdvancedNLPService {
       if (AsyncStorage) {
         await AsyncStorage.setItem(this.MODEL_KEY, serialized);
         console.log('✅ Advanced NLP Model saved successfully');
-      } else if (this.modelFilePath && fs) {
-        fs.writeFileSync(this.modelFilePath, serialized);
-        console.log('✅ Advanced NLP Model saved to file:', this.modelFilePath);
+      }
+      if (ExpoFileSystem) {
+        const dir = ExpoFileSystem.cacheDirectory || ExpoFileSystem.documentDirectory;
+        const fileUri = `${dir}${this.modelFileName}`;
+        await ExpoFileSystem.writeAsStringAsync(fileUri, serialized);
       }
     } catch (error) {
       console.error('❌ Failed to save NLP model:', error);

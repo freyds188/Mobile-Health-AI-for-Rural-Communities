@@ -9,6 +9,7 @@ import { ChatbotProvider } from './src/contexts/ChatbotContext';
 import { useAppFonts } from './src/utils/fonts';
 import { View, Text } from 'react-native';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import { t } from './src/utils/i18n';
 
 // Screens
 import LoginScreen from './src/screens/auth/LoginScreen';
@@ -34,7 +35,7 @@ export default function App() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#2E7D32' }}>
         <Text style={{ color: 'white', fontSize: 18, fontFamily: 'System' }}>
-          Loading...
+          {t('common.loading')}
         </Text>
       </View>
     );
