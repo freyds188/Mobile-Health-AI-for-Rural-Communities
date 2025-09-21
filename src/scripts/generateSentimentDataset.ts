@@ -79,7 +79,7 @@ function buildDataset(): Sample[] {
 }
 
 function main(): void {
-  const outPath = path.join(process.cwd(), 'sentiment_training_dataset.csv');
+  const outPath = path.join(process.cwd(), 'datasets/sentiment_training_dataset.csv');
   const header = ['text', 'label', 'domain'];
   const rows: string[] = [header.join(',')];
   const data = buildDataset();

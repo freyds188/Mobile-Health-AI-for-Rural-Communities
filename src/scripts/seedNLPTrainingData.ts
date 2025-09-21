@@ -111,12 +111,12 @@ async function seedNLP(): Promise<void> {
   // Ingest from available CSV datasets (best-effort)
   const root = process.cwd();
   const datasets = [
-    path.join(root, 'training_dataset.csv'),
-    path.join(root, 'enhanced_training_dataset.csv'),
-    path.join(root, 'comprehensive_symptom_dataset.csv'),
-    path.join(root, 'rural_health_dataset.csv'),
-    path.join(root, 'mental_health_dataset.csv'),
-    path.join(root, 'conversational_training_dataset.csv')
+    path.join(root, 'datasets/basic_health_assessment_dataset.csv'),
+    path.join(root, 'datasets/temporal_health_patterns_dataset.csv'),
+    path.join(root, 'datasets/general_health_symptoms_dataset.csv'),
+    path.join(root, 'datasets/rural_healthcare_access_dataset.csv'),
+    path.join(root, 'datasets/mental_health_conditions_dataset.csv'),
+    path.join(root, 'datasets/conversational_training_dataset.csv')
   ];
 
   let totalAdded = examples.length;

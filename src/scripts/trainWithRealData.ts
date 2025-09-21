@@ -196,24 +196,24 @@ async function readCSVFiles(): Promise<{ basic?: string; enhanced?: string }> {
   
   try {
     // Try to read basic training dataset
-    const basicPath = path.join(process.cwd(), 'training_dataset.csv');
+    const basicPath = path.join(process.cwd(), 'datasets/basic_health_assessment_dataset.csv');
     if (fs.existsSync(basicPath)) {
       csvContent.basic = fs.readFileSync(basicPath, 'utf-8');
-      console.log('📄 Found training_dataset.csv');
+      console.log('📄 Found basic_health_assessment_dataset.csv');
     }
   } catch (error) {
-    console.log('⚠️ Could not read training_dataset.csv');
+    console.log('⚠️ Could not read basic_health_assessment_dataset.csv');
   }
 
   try {
     // Try to read enhanced training dataset
-    const enhancedPath = path.join(process.cwd(), 'enhanced_training_dataset.csv');
+    const enhancedPath = path.join(process.cwd(), 'datasets/temporal_health_patterns_dataset.csv');
     if (fs.existsSync(enhancedPath)) {
       csvContent.enhanced = fs.readFileSync(enhancedPath, 'utf-8');
-      console.log('📄 Found enhanced_training_dataset.csv');
+      console.log('📄 Found temporal_health_patterns_dataset.csv');
     }
   } catch (error) {
-    console.log('⚠️ Could not read enhanced_training_dataset.csv');
+    console.log('⚠️ Could not read temporal_health_patterns_dataset.csv');
   }
 
   return csvContent;

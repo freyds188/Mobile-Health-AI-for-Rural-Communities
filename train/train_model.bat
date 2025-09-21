@@ -40,14 +40,14 @@ if not exist "training\models" mkdir training\models
 if not exist "training\results" mkdir training\results
 
 REM Copy datasets if they exist
-if exist "training_dataset.csv" (
-    move training_dataset.csv training\datasets\
-    echo ✅ Moved training_dataset.csv to training/datasets/
+if exist "datasets\basic_health_assessment_dataset.csv" (
+    copy datasets\basic_health_assessment_dataset.csv training\datasets\
+    echo ✅ Copied basic_health_assessment_dataset.csv to training/datasets/
 )
 
-if exist "enhanced_training_dataset.csv" (
-    move enhanced_training_dataset.csv training\datasets\
-    echo ✅ Moved enhanced_training_dataset.csv to training/datasets/
+if exist "datasets\temporal_health_patterns_dataset.csv" (
+    copy datasets\temporal_health_patterns_dataset.csv training\datasets\
+    echo ✅ Copied temporal_health_patterns_dataset.csv to training/datasets/
 )
 
 if exist "dataset_analyzer.py" (

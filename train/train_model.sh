@@ -36,14 +36,14 @@ mkdir -p training/models
 mkdir -p training/results
 
 # Copy datasets if they exist
-if [ -f "training_dataset.csv" ]; then
-    mv training_dataset.csv training/datasets/
-    echo "✅ Moved training_dataset.csv to training/datasets/"
+if [ -f "datasets/basic_health_assessment_dataset.csv" ]; then
+    cp datasets/basic_health_assessment_dataset.csv training/datasets/
+    echo "✅ Copied basic_health_assessment_dataset.csv to training/datasets/"
 fi
 
-if [ -f "enhanced_training_dataset.csv" ]; then
-    mv enhanced_training_dataset.csv training/datasets/
-    echo "✅ Moved enhanced_training_dataset.csv to training/datasets/"
+if [ -f "datasets/temporal_health_patterns_dataset.csv" ]; then
+    cp datasets/temporal_health_patterns_dataset.csv training/datasets/
+    echo "✅ Copied temporal_health_patterns_dataset.csv to training/datasets/"
 fi
 
 if [ -f "dataset_analyzer.py" ]; then

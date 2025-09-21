@@ -295,8 +295,8 @@ export async function runNodeTraining(): Promise<void> {
   try {
     // Check for CSV files
     const csvFiles = [
-      { name: 'Basic Dataset', path: 'training_dataset.csv' },
-      { name: 'Enhanced Dataset', path: 'enhanced_training_dataset.csv' }
+      { name: 'Basic Dataset', path: 'datasets/basic_health_assessment_dataset.csv' },
+      { name: 'Enhanced Dataset', path: 'datasets/temporal_health_patterns_dataset.csv' }
     ];
 
     for (const csvFile of csvFiles) {

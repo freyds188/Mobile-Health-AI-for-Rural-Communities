@@ -1,5 +1,5 @@
 /**
- * Seed a sentiment lexicon into AdvancedNLPService from sentiment_training_dataset.csv
+ * Seed a sentiment lexicon into AdvancedNLPService from datasets/sentiment_training_dataset.csv
  * The lexicon will improve analyzeSentiment by weighting words by learned polarity.
  */
 import fs from 'fs';
@@ -53,7 +53,7 @@ function tokenize(s: string): string[] {
 }
 
 async function seedLexicon(): Promise<void> {
-  const filePath = path.join(process.cwd(), 'sentiment_training_dataset.csv');
+  const filePath = path.join(process.cwd(), 'datasets/sentiment_training_dataset.csv');
   const rows = parseCSV(filePath);
   if (rows.length === 0) {
     console.log('⚠️ No sentiment dataset found; run generate:sentiment-dataset first.');

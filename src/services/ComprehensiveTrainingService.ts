@@ -112,7 +112,7 @@ export class ComprehensiveTrainingService {
           if (dataset.records.length === 0) {
             console.log(`📄 Attempting to load ${datasetName} from file...`);
             try {
-              const loadedRecords = await this.loadDatasetFromFile(`${datasetName.toLowerCase().replace(/\s+/g, '_')}.csv`);
+              const loadedRecords = await this.loadDatasetFromFile(`datasets/${datasetName.toLowerCase().replace(/\s+/g, '_')}.csv`);
               dataset.records = loadedRecords;
               console.log(`✅ Loaded ${loadedRecords.length} records from ${datasetName}`);
             } catch (fileError) {

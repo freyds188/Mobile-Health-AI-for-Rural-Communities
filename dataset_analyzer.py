@@ -323,8 +323,8 @@ def main():
     
     # Analyze both datasets
     datasets = [
-        'training_dataset.csv',
-        'enhanced_training_dataset.csv'
+        'datasets/basic_health_assessment_dataset.csv',
+        'datasets/temporal_health_patterns_dataset.csv'
     ]
     
     for dataset in datasets:

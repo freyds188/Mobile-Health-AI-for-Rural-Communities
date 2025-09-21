@@ -35,7 +35,7 @@ function toCSVLine(values: string[]): string {
 }
 
 function main(): void {
-  const outPath = path.join(process.cwd(), 'conversational_training_dataset.csv');
+  const outPath = path.join(process.cwd(), 'datasets/conversational_training_dataset.csv');
   const header = ['id', 'userId', 'timestamp', 'symptoms', 'severity', 'sleep', 'stress', 'exercise', 'diet', 'notes', 'age', 'gender', 'location', 'medical_history'];
   const lines: string[] = [];
   lines.push(header.join(','));

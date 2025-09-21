@@ -37,11 +37,11 @@ npm run web        # Run in browser
 
 ## Datasets
 
-Supported CSVs in project root (scripts will move them to `training/datasets/` on first run):
-- `training_dataset.csv`
-- `enhanced_training_dataset.csv`
-- `comprehensive_symptom_dataset.csv`
-- `rural_health_dataset.csv`, `mental_health_dataset.csv` (optional real data examples)
+Supported CSVs in `datasets/` folder (scripts will copy them to `training/datasets/` on first run):
+- `datasets/basic_health_assessment_dataset.csv`
+- `datasets/temporal_health_patterns_dataset.csv`
+- `datasets/general_health_symptoms_dataset.csv`
+- `datasets/rural_healthcare_access_dataset.csv`, `datasets/mental_health_conditions_dataset.csv` (optional real data examples)
 
 ## Machine Learning — Scripts Overview
 
