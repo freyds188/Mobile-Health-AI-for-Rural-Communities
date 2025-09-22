@@ -2,6 +2,7 @@ import { databaseService } from './DatabaseService';
 import { machineLearningService, MLAnalysisResult, HealthDataInput } from './MachineLearningService';
 import { nlpService, NLPAnalysisResult } from './NLPService';
 import { securityService } from './SecurityService';
+import { eventBus } from '../utils/EventBus';
 
 export interface UserProfile {
   id: string;
@@ -262,13 +263,27 @@ export class DataService {
   async saveProviderFeedback(feedback: { providerId: string; patientId: string; insightId?: string; feedbackText: string; rating?: number }): Promise<string> {
     await this.ensureInitialized();
     const stableId = `fdbk-${feedback.providerId}-${feedback.patientId}-${Date.now()}`;
-    return await databaseService.saveProviderFeedback({ id: stableId, ...feedback });
+    const id = await databaseService.saveProviderFeedback({ id: stableId, ...feedback });
+    try {
+      eventBus.emit('provider_feedback_saved', { id, ...feedback });
+    } catch {}
+    return id;
   }
 
-  async getFeedbackForPatient(patientId: string): Promise<Array<{ id: string; providerId: string; feedbackText: string; rating: number | null; createdAt: Date }>> {
+  async getFeedbackForPatient(patientId: string): Promise<Array<{ id: string; providerId: string; providerName?: string; feedbackText: string; rating: number | null; createdAt: Date }>> {
     await this.ensureInitialized();
     const rows = await databaseService.getFeedbackForPatient(patientId);
-    return rows.map(r => ({ ...r, createdAt: new Date(r.createdAt) }));
+    // Enrich with provider names (best-effort). On web fallback, users list is available.
+    let providerDirectory: Record<string, string> = {};
+    try {
+      const providers = await databaseService.getAllProviders();
+      providerDirectory = providers.reduce((acc, p) => { acc[p.id] = p.name; return acc; }, {} as Record<string, string>);
+    } catch {}
+    return rows.map(r => ({
+      ...r,
+      providerName: providerDirectory[r.providerId],
+      createdAt: new Date(r.createdAt)
+    }));
   }
 
   async sendAssessmentToAssignedProvider(patientId: string, assessmentPayload: any, insightId?: string): Promise<{ success: boolean; submissionId?: string; providerCount: number }>{

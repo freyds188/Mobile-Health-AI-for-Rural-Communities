@@ -4,15 +4,19 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../contexts/AuthContext';
 import { dataService } from '../services/DataService';
+import { eventBus } from '../utils/EventBus';
 
 interface InboxItem {
   id: string;
+  type: 'submission' | 'feedback';
   providerId: string;
   providerName?: string;
   sentAt: string;
   riskSummary?: string;
   payload?: any;
   insightId?: string;
+  feedbackText?: string;
+  rating?: number | null;
 }
 
 const READ_KEY = (userId: string) => `inbox_read_${userId}`;
@@ -60,16 +64,33 @@ const PatientInboxScreen: React.FC = () => {
     if (!user) return;
     setRefreshing(true);
     try {
-      const rows = await dataService.getSubmissionsForPatient(user.id);
-      setItems(rows.map(r => ({
+      const [rows, feedback] = await Promise.all([
+        dataService.getSubmissionsForPatient(user.id),
+        dataService.getFeedbackForPatient(user.id)
+      ]);
+      const submissionItems: InboxItem[] = rows.map(r => ({
         id: r.id,
+        type: 'submission',
         providerId: r.providerId,
         providerName: r.providerName,
         sentAt: (r.sentAt as Date).toISOString?.() || String(r.sentAt),
         riskSummary: r.payload?.overallRiskLevel,
         payload: r.payload,
         insightId: r.insightId
-      })));
+      }));
+      const feedbackItems: InboxItem[] = feedback.map(f => ({
+        id: f.id,
+        type: 'feedback',
+        providerId: f.providerId,
+        providerName: (f as any).providerName,
+        sentAt: (f.createdAt as any as Date).toISOString?.() || String(f.createdAt),
+        feedbackText: f.feedbackText,
+        rating: f.rating ?? null
+      }));
+      const merged = [...submissionItems, ...feedbackItems]
+        .filter(i => !archivedIds.has(i.id))
+        .sort((a, b) => String(b.sentAt).localeCompare(String(a.sentAt)));
+      setItems(merged);
     } finally {
       setRefreshing(false);
     }
@@ -77,6 +98,24 @@ const PatientInboxScreen: React.FC = () => {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { loadState(); }, [loadState]);
+
+  // Live updates: refresh when provider feedback is saved for this user
+  useEffect(() => {
+    if (!user) return;
+    const off = eventBus.on('provider_feedback_saved', (payload?: any) => {
+      try {
+        if (payload && payload.patientId === user.id) {
+          // Refresh inbox items and feedback list if current selection is from this provider
+          load();
+          if (selected && payload.providerId === selected.providerId) {
+            // Trigger feedback reload effect by updating selected ref
+            setSelected({ ...selected });
+          }
+        }
+      } catch {}
+    });
+    return () => { try { off(); } catch {} };
+  }, [user, load, selected]);
 
   useEffect(() => {
     const loadFeedback = async () => {
@@ -99,7 +138,8 @@ const PatientInboxScreen: React.FC = () => {
       return (
         (i.providerName || '').toLowerCase().includes(q) ||
         (i.riskSummary || '').toLowerCase().includes(q) ||
-        (i.payload?.selectedSymptoms || []).join(', ').toLowerCase().includes(q)
+        (i.payload?.selectedSymptoms || []).join(', ').toLowerCase().includes(q) ||
+        (i.feedbackText || '').toLowerCase().includes(q)
       );
     });
     if (sortMode === 'unread') {
@@ -134,7 +174,12 @@ const PatientInboxScreen: React.FC = () => {
             {unread && <View style={styles.unreadDot} accessibilityLabel="Unread message" />}
           </View>
           <Text style={styles.listMeta}>{new Date(item.sentAt).toLocaleString()}</Text>
-          {!!item.riskSummary && <Text style={styles.listSnippet}>Risk: {String(item.riskSummary).toUpperCase()}</Text>}
+          {item.type === 'submission' && !!item.riskSummary && (
+            <Text style={styles.listSnippet}>Risk: {String(item.riskSummary).toUpperCase()}</Text>
+          )}
+          {item.type === 'feedback' && !!item.feedbackText && (
+            <Text style={styles.listSnippet}>Feedback: {item.feedbackText.slice(0, 140)}{item.feedbackText.length > 140 ? '…' : ''}</Text>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -146,9 +191,9 @@ const PatientInboxScreen: React.FC = () => {
         <>
           <Text style={styles.detailTitle}>{selected.providerName || selected.providerId}</Text>
           <Text style={styles.detailMeta}>{new Date(selected.sentAt).toLocaleString()}</Text>
-          {!!selected.riskSummary && <Text style={styles.detailRisk}>Risk: {String(selected.riskSummary).toUpperCase()}</Text>}
+          {selected.type === 'submission' && !!selected.riskSummary && <Text style={styles.detailRisk}>Risk: {String(selected.riskSummary).toUpperCase()}</Text>}
           <ScrollView style={{ marginTop: 8 }}>
-            {(() => {
+            {selected.type === 'submission' ? (() => {
               const payload: any = selected?.payload || {};
               const conditions = Array.isArray(payload.potentialConditions) ? payload.potentialConditions : [];
               const symptoms = Array.isArray(payload.selectedSymptoms) ? payload.selectedSymptoms : [];
@@ -170,16 +215,24 @@ const PatientInboxScreen: React.FC = () => {
                   )}
                 </>
               );
-            })()}
-            {feedbacks.length > 0 && (
+            })() : null}
+            {(selected.type === 'submission' ? feedbacks.length > 0 : !!selected.feedbackText) && (
               <View style={{ marginTop: 12 }}>
                 <Text style={styles.modalLabel}>Provider Feedback</Text>
-                {feedbacks.slice(0, 5).map(f => (
-                  <View key={f.id} style={{ marginTop: 6 }}>
-                    <Text style={styles.modalValue}>{new Date(f.createdAt as any).toLocaleString()} {typeof f.rating === 'number' ? `(Rating: ${f.rating})` : ''}</Text>
-                    <Text style={styles.modalBullet}>• {f.feedbackText}</Text>
-                  </View>
-                ))}
+                {selected.type === 'submission'
+                  ? feedbacks.slice(0, 5).map(f => (
+                      <View key={f.id} style={{ marginTop: 6 }}>
+                        <Text style={styles.modalValue}>{new Date(f.createdAt as any).toLocaleString()} {typeof f.rating === 'number' ? `(Rating: ${f.rating})` : ''}</Text>
+                        <Text style={styles.modalBullet}>• {f.feedbackText}</Text>
+                      </View>
+                    ))
+                  : (
+                      <View style={{ marginTop: 6 }}>
+                        <Text style={styles.modalValue}>{typeof selected.rating === 'number' ? `(Rating: ${selected.rating})` : ''}</Text>
+                        <Text style={styles.modalBullet}>• {selected.feedbackText}</Text>
+                      </View>
+                    )
+                }
               </View>
             )}
           </ScrollView>

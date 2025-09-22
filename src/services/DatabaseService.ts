@@ -485,8 +485,11 @@ export class DatabaseService {
                   setTimeout(() => successCallback(tx, result), 0);
                 }
               }
-              // Handle INSERT operations for provider_feedback
-              else if (sql.includes('INSERT INTO provider_feedback')) {
+              // Handle INSERT operations for provider_feedback (support OR IGNORE variant)
+              else if (
+                sql.includes('INSERT INTO provider_feedback') ||
+                sql.includes('INSERT OR IGNORE INTO provider_feedback')
+              ) {
                 const [id, providerId, patientId, insightId, feedbackText, rating, createdAt] = params;
                 const feedback = {
                   id,
