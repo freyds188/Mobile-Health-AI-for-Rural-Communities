@@ -1,5 +1,6 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
+import PatientDetailsScreen from '../screens/provider/PatientDetailsScreen';
 import { Ionicons } from '@expo/vector-icons';
 import { TouchableOpacity, View, Text } from 'react-native';
 
@@ -10,6 +11,7 @@ import HealthLogHistoryScreen from '../screens/HealthLogHistoryScreen';
 export type HealthStackParamList = {
   'Log Health Main': undefined;
   'Health History': undefined;
+  'Patient Details': { patientId: string } | undefined;
 };
 
 const Stack = createStackNavigator<HealthStackParamList>();
@@ -101,6 +103,11 @@ const HealthStackNavigator = () => {
             </TouchableOpacity>
           ),
         })}
+      />
+      <Stack.Screen 
+        name="Patient Details" 
+        component={PatientDetailsScreen}
+        options={{ title: 'Patient Details' }}
       />
       <Stack.Screen 
         name="Health History" 

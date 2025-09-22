@@ -2,6 +2,7 @@ import * as SQLite from 'expo-sqlite';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import CryptoJS from 'react-native-crypto-js';
+import { HealthDataInput } from './MachineLearningService';
 import { v4 as uuidv4 } from 'uuid';
 
 interface DatabaseConfig {
@@ -19,7 +20,7 @@ interface User {
   id: string;
   email: string;
   name: string;
-  role: 'patient' | 'provider' | 'admin';
+  role: 'patient' | 'provider' | 'admin' | 'chw';
   age?: number;
   gender?: 'male' | 'female' | 'other';
   location?: string;
@@ -112,6 +113,10 @@ export class DatabaseService {
       
       if (this.isWebPlatform) {
         console.log('🌐 DatabaseService: Web platform detected, using web storage fallback');
+        // Initialize encryption keys even on web so we can encrypt localStorage
+        if (this.config.encryption) {
+          await this.initializeEncryption();
+        }
         this.loadWebStorage();
         this.db = this.createWebFallbackDatabase();
         this.isInitialized = true;
@@ -222,6 +227,19 @@ export class DatabaseService {
   private loadWebStorage(): void {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
+        // Prefer encrypted storage if available
+        const enc = window.localStorage.getItem('health_ai_web_storage_encrypted');
+        if (enc && this.config.encryption) {
+          try {
+            const decrypted = this.decrypt(enc);
+            const parsed = JSON.parse(decrypted);
+            this.webStorage = new Map(Object.entries(parsed));
+            console.log('📦 DatabaseService: Loaded encrypted web storage data');
+            return;
+          } catch (e) {
+            console.warn('❌ DatabaseService: Failed to decrypt web storage, falling back to plaintext if present');
+          }
+        }
         const storedData = window.localStorage.getItem('health_ai_web_storage');
         if (storedData) {
           const parsed = JSON.parse(storedData);
@@ -238,8 +256,17 @@ export class DatabaseService {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         const dataObj = Object.fromEntries(this.webStorage);
-        window.localStorage.setItem('health_ai_web_storage', JSON.stringify(dataObj));
-        console.log('💾 DatabaseService: Saved web storage data');
+        const json = JSON.stringify(dataObj);
+        if (this.config.encryption && this.encryptionKeys) {
+          const enc = this.encrypt(json);
+          window.localStorage.setItem('health_ai_web_storage_encrypted', enc);
+          // Clean up legacy plaintext key
+          try { window.localStorage.removeItem('health_ai_web_storage'); } catch {}
+          console.log('💾 DatabaseService: Saved encrypted web storage data');
+        } else {
+          window.localStorage.setItem('health_ai_web_storage', json);
+          console.log('💾 DatabaseService: Saved web storage data');
+        }
       }
     } catch (error) {
       console.warn('❌ DatabaseService: Failed to save web storage:', error);
@@ -257,6 +284,27 @@ export class DatabaseService {
             try {
               let result: any = { rows: { length: 0, item: (i: number) => null, _array: [] } };
               
+              // Handle COUNT(*) queries with safe defaults
+              const countMatch = sql.match(/SELECT\s+COUNT\(\*\)\s+as\s+count\s+FROM\s+(\w+)/i);
+              if (countMatch) {
+                const table = countMatch[1].toLowerCase();
+                const safeCount = (() => {
+                  if (table === 'users') return ((this.webStorage.get('users') || []) as any[]).length;
+                  if (table === 'health_data') { let n = 0; for (const k of this.webStorage.keys()) if (k.startsWith('health_data_')) n++; return n; }
+                  if (table === 'health_insights') { let n = 0; for (const k of this.webStorage.keys()) if (k.startsWith('health_insight_')) n++; return n; }
+                  if (table === 'chat_messages') { let n = 0; for (const k of this.webStorage.keys()) if (k.startsWith('chat_message_')) n++; return n; }
+                  return 0;
+                })();
+                const rowsArray = [{ count: safeCount }];
+                result.rows = {
+                  length: rowsArray.length,
+                  item: (i: number) => rowsArray[i] ?? null,
+                  _array: rowsArray
+                };
+                if (successCallback) { setTimeout(() => successCallback(tx, result), 0); }
+                return;
+              }
+
               // Handle INSERT operations
               if (sql.includes('INSERT INTO health_data')) {
                 const [id, userId, timestamp, symptoms, severity, sleep, stress, exercise, diet, notes, encrypted, createdAt] = params;
@@ -437,6 +485,43 @@ export class DatabaseService {
                   setTimeout(() => successCallback(tx, result), 0);
                 }
               }
+              // Handle INSERT operations for provider_feedback
+              else if (sql.includes('INSERT INTO provider_feedback')) {
+                const [id, providerId, patientId, insightId, feedbackText, rating, createdAt] = params;
+                const feedback = {
+                  id,
+                  provider_id: providerId,
+                  patient_id: patientId,
+                  insight_id: insightId,
+                  feedback_text: feedbackText,
+                  rating,
+                  created_at: createdAt
+                };
+                const list = (this.webStorage.get('provider_feedback') || []) as any[];
+                list.push(feedback);
+                this.webStorage.set('provider_feedback', list);
+                this.saveWebStorage();
+                console.log('✅ Web DB: Provider feedback saved with ID:', id);
+
+                if (successCallback) {
+                  setTimeout(() => successCallback(tx, result), 0);
+                }
+              }
+              // Handle SELECT operations for provider_feedback by patient
+              else if (sql.includes('SELECT id, provider_id as providerId, feedback_text as feedbackText, rating, created_at as createdAt\n           FROM provider_feedback WHERE patient_id = ?')) {
+                const patientId = params[0];
+                const list = (this.webStorage.get('provider_feedback') || []) as any[];
+                const rowsArray = list
+                  .filter(f => f.patient_id === patientId)
+                  .map(f => ({ id: f.id, providerId: f.provider_id, feedbackText: f.feedback_text, rating: f.rating ?? null, createdAt: f.created_at }))
+                  .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+                result.rows = {
+                  length: rowsArray.length,
+                  item: (i: number) => rowsArray[i] ?? null,
+                  _array: rowsArray
+                };
+                if (successCallback) { setTimeout(() => successCallback(tx, result), 0); }
+              }
               // Handle other operations (users, etc.)
               else {
                 console.log('⚠️ Web DB: Unhandled SQL operation:', sql);
@@ -455,6 +540,27 @@ export class DatabaseService {
         callback(tx);
       }
     };
+  }
+
+  private async ensureDb(): Promise<void> {
+    // If a DB object is already available, nothing to do
+    if (this.db) {
+      return;
+    }
+
+    // Determine platform once
+    this.isWebPlatform = typeof window !== 'undefined';
+
+    if (this.isWebPlatform) {
+      // Web fallback: Map persisted to localStorage
+      this.loadWebStorage();
+      this.db = this.createWebFallbackDatabase();
+      this.isInitialized = true;
+      return;
+    }
+
+    // Native path: run full initialization which sets up SQLite DB
+    await this.initialize();
   }
 
   private async initializeEncryption(): Promise<void> {
@@ -578,7 +684,7 @@ export class DatabaseService {
             id TEXT PRIMARY KEY,
             email TEXT UNIQUE NOT NULL,
             name TEXT NOT NULL,
-            role TEXT NOT NULL CHECK (role IN ('patient', 'provider', 'admin')),
+            role TEXT NOT NULL CHECK (role IN ('patient', 'provider', 'admin', 'chw')),
             age INTEGER,
             gender TEXT CHECK (gender IN ('male', 'female', 'other')),
             location TEXT,
@@ -625,6 +731,59 @@ export class DatabaseService {
           );
         `);
 
+        // Patient-provider assignments table
+        tx.executeSql(`
+          CREATE TABLE IF NOT EXISTS patient_provider_assignments (
+            patient_id TEXT NOT NULL,
+            provider_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (patient_id, provider_id),
+            FOREIGN KEY (patient_id) REFERENCES users (id) ON DELETE CASCADE,
+            FOREIGN KEY (provider_id) REFERENCES users (id) ON DELETE CASCADE
+          );
+        `);
+
+        // Provider assessment submissions table
+        tx.executeSql(`
+          CREATE TABLE IF NOT EXISTS provider_assessment_submissions (
+            id TEXT PRIMARY KEY,
+            patient_id TEXT NOT NULL,
+            provider_id TEXT NOT NULL,
+            insight_id TEXT,
+            payload_json TEXT NOT NULL,
+            sent_at TEXT NOT NULL,
+            status TEXT DEFAULT 'sent',
+            FOREIGN KEY (patient_id) REFERENCES users (id) ON DELETE CASCADE,
+            FOREIGN KEY (provider_id) REFERENCES users (id) ON DELETE CASCADE
+          );
+        `);
+
+        // Risk assessment history table
+        tx.executeSql(`
+          CREATE TABLE IF NOT EXISTS risk_assessment_history (
+            id TEXT PRIMARY KEY,
+            patient_id TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (patient_id) REFERENCES users (id) ON DELETE CASCADE
+          );
+        `);
+
+        // Provider feedback table
+        tx.executeSql(`
+          CREATE TABLE IF NOT EXISTS provider_feedback (
+            id TEXT PRIMARY KEY,
+            provider_id TEXT NOT NULL,
+            patient_id TEXT NOT NULL,
+            insight_id TEXT,
+            feedback_text TEXT NOT NULL,
+            rating INTEGER,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (provider_id) REFERENCES users (id) ON DELETE CASCADE,
+            FOREIGN KEY (patient_id) REFERENCES users (id) ON DELETE CASCADE
+          );
+        `);
+
         // Chat messages table
         tx.executeSql(`
           CREATE TABLE IF NOT EXISTS chat_messages (
@@ -642,11 +801,34 @@ export class DatabaseService {
           );
         `);
 
+        // CHW guided visit records
+        tx.executeSql(`
+          CREATE TABLE IF NOT EXISTS chw_visits (
+            id TEXT PRIMARY KEY,
+            chw_id TEXT NOT NULL,
+            patient_id TEXT NOT NULL,
+            started_at TEXT NOT NULL,
+            completed_at TEXT,
+            status TEXT NOT NULL DEFAULT 'in_progress',
+            steps_json TEXT NOT NULL,
+            encrypted INTEGER DEFAULT 0,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (chw_id) REFERENCES users (id) ON DELETE CASCADE,
+            FOREIGN KEY (patient_id) REFERENCES users (id) ON DELETE CASCADE
+          );
+        `);
+
         // Create indexes for better performance
         tx.executeSql('CREATE INDEX IF NOT EXISTS idx_health_data_user_timestamp ON health_data (user_id, timestamp);');
         tx.executeSql('CREATE INDEX IF NOT EXISTS idx_health_insights_user_timestamp ON health_insights (user_id, timestamp);');
+        tx.executeSql('CREATE INDEX IF NOT EXISTS idx_assignments_provider ON patient_provider_assignments (provider_id);');
+        tx.executeSql('CREATE INDEX IF NOT EXISTS idx_submissions_provider ON provider_assessment_submissions (provider_id, sent_at);');
+        tx.executeSql('CREATE INDEX IF NOT EXISTS idx_history_patient ON risk_assessment_history (patient_id, created_at);');
+        tx.executeSql('CREATE INDEX IF NOT EXISTS idx_feedback_patient ON provider_feedback (patient_id);');
         tx.executeSql('CREATE INDEX IF NOT EXISTS idx_chat_messages_user_timestamp ON chat_messages (user_id, timestamp);');
         tx.executeSql('CREATE INDEX IF NOT EXISTS idx_users_email ON users (email);');
+        tx.executeSql('CREATE INDEX IF NOT EXISTS idx_chw_visits_chw ON chw_visits (chw_id, started_at);');
+        tx.executeSql('CREATE INDEX IF NOT EXISTS idx_chw_visits_patient ON chw_visits (patient_id, started_at);');
 
         // Cached content table
         tx.executeSql(`
@@ -816,6 +998,397 @@ export class DatabaseService {
             reject(error);
             return false;
           }
+        );
+      });
+    });
+  }
+
+  // Provider-patient assignment methods
+  async assignPatientToProvider(patientId: string, providerId: string): Promise<void> {
+    // Web fallback
+    if (this.isWebPlatform) {
+      this.loadWebStorage();
+      const now = new Date().toISOString();
+      const assignments: Array<{ patientId: string; providerId: string; createdAt: string }> = this.webStorage.get('assignments') || [];
+      const exists = assignments.some(a => a.patientId === patientId && a.providerId === providerId);
+      if (!exists) {
+        assignments.push({ patientId, providerId, createdAt: now });
+        this.webStorage.set('assignments', assignments);
+        this.saveWebStorage();
+      }
+      return;
+    }
+    await this.ensureDb();
+    const now = new Date().toISOString();
+    await new Promise<void>((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `INSERT OR IGNORE INTO patient_provider_assignments (patient_id, provider_id, created_at) VALUES (?, ?, ?)`,
+          [patientId, providerId, now],
+          () => resolve(),
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+  }
+
+  async getAssignedPatients(providerId: string): Promise<Array<{ id: string; name: string; email: string }>> {
+    // Web fallback
+    if (this.isWebPlatform) {
+      this.loadWebStorage();
+      const users: Array<any> = this.webStorage.get('users') || [];
+      const assignments: Array<{ patientId: string; providerId: string; createdAt: string }> = this.webStorage.get('assignments') || [];
+      const patientIds = assignments.filter(a => a.providerId === providerId).map(a => a.patientId);
+      const rows = users
+        .filter(u => patientIds.includes(u.id))
+        .map(u => ({ id: u.id, name: u.name, email: u.email }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      return rows;
+    }
+    await this.ensureDb();
+    return await new Promise((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `SELECT u.id, u.name, u.email
+           FROM patient_provider_assignments ppa
+           JOIN users u ON u.id = ppa.patient_id
+           WHERE ppa.provider_id = ?
+           ORDER BY u.name ASC`,
+          [providerId],
+          (_tx, rs) => {
+            const rows: Array<{ id: string; name: string; email: string }> = [];
+            for (let i = 0; i < rs.rows.length; i++) rows.push(rs.rows.item(i));
+            resolve(rows);
+          },
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+  }
+
+  async getProvidersForPatient(patientId: string): Promise<Array<{ id: string; name: string; email: string }>> {
+    // Web fallback
+    if (this.isWebPlatform) {
+      this.loadWebStorage();
+      const users: Array<any> = this.webStorage.get('users') || [];
+      const assignments: Array<{ patientId: string; providerId: string; createdAt: string }> = this.webStorage.get('assignments') || [];
+      const providerIds = assignments.filter(a => a.patientId === patientId).map(a => a.providerId);
+      const rows = users
+        .filter(u => providerIds.includes(u.id) && u.role === 'provider')
+        .map(u => ({ id: u.id, name: u.name, email: u.email }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      return rows;
+    }
+    await this.ensureDb();
+    return await new Promise((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `SELECT u.id, u.name, u.email
+           FROM patient_provider_assignments ppa
+           JOIN users u ON u.id = ppa.provider_id
+           WHERE ppa.patient_id = ?
+           ORDER BY u.name ASC`,
+          [patientId],
+          (_tx, rs) => {
+            const rows: Array<{ id: string; name: string; email: string }> = [];
+            for (let i = 0; i < rs.rows.length; i++) rows.push(rs.rows.item(i));
+            resolve(rows);
+          },
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+  }
+
+  async getPatientInsightsForProvider(providerId: string): Promise<Array<HealthInsight & { patientName: string }>> {
+    await this.ensureDb();
+    return await new Promise((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `SELECT hi.*, u.name as patient_name
+           FROM health_insights hi
+           JOIN patient_provider_assignments ppa ON ppa.patient_id = hi.user_id
+           JOIN users u ON u.id = hi.user_id
+           WHERE ppa.provider_id = ?
+           ORDER BY hi.timestamp DESC`,
+          [providerId],
+          (_tx, rs) => {
+            const insights: Array<HealthInsight & { patientName: string }> = [];
+            for (let i = 0; i < rs.rows.length; i++) {
+              const row = rs.rows.item(i);
+              insights.push({
+                id: row.id,
+                userId: row.user_id,
+                timestamp: row.timestamp,
+                riskLevel: row.risk_level,
+                patterns: row.patterns,
+                recommendations: row.recommendations,
+                confidence: row.confidence,
+                algorithmVersion: row.algorithm_version,
+                createdAt: row.created_at,
+                patientName: row.patient_name
+              });
+            }
+            resolve(insights);
+          },
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+  }
+
+  async saveProviderFeedback(feedback: { id?: string; providerId: string; patientId: string; insightId?: string; feedbackText: string; rating?: number }): Promise<string> {
+    await this.ensureDb();
+    const id = feedback.id || uuidv4();
+    const now = new Date().toISOString();
+    await new Promise<void>((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `INSERT OR IGNORE INTO provider_feedback (id, provider_id, patient_id, insight_id, feedback_text, rating, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [id, feedback.providerId, feedback.patientId, feedback.insightId || null, feedback.feedbackText, feedback.rating ?? null, now],
+          () => resolve(),
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+    return id;
+  }
+
+  async getFeedbackForPatient(patientId: string): Promise<Array<{ id: string; providerId: string; feedbackText: string; rating: number | null; createdAt: string }>> {
+    await this.ensureDb();
+    return await new Promise((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `SELECT id, provider_id as providerId, feedback_text as feedbackText, rating, created_at as createdAt
+           FROM provider_feedback WHERE patient_id = ? ORDER BY created_at DESC`,
+          [patientId],
+          (_tx, rs) => {
+            const rows: Array<{ id: string; providerId: string; feedbackText: string; rating: number | null; createdAt: string }> = [];
+            for (let i = 0; i < rs.rows.length; i++) rows.push(rs.rows.item(i));
+            resolve(rows);
+          },
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+  }
+
+  // Provider submissions
+  async saveAssessmentSubmission(submission: { id?: string; patientId: string; providerId: string; insightId?: string; payload: any; sentAt?: Date; status?: string }): Promise<string> {
+    // Web fallback
+    if (this.isWebPlatform) {
+      this.loadWebStorage();
+      const id = submission.id || uuidv4();
+      const sentAt = (submission.sentAt ?? new Date()).toISOString();
+      const submissions: Array<any> = this.webStorage.get('submissions') || [];
+      submissions.push({
+        id,
+        patientId: submission.patientId,
+        providerId: submission.providerId,
+        insightId: submission.insightId ?? null,
+        payload: submission.payload,
+        sentAt,
+        status: submission.status || 'sent'
+      });
+      this.webStorage.set('submissions', submissions);
+      this.saveWebStorage();
+      return id;
+    }
+    await this.ensureDb();
+    const id = submission.id || uuidv4();
+    const sentAt = (submission.sentAt ?? new Date()).toISOString();
+    await new Promise<void>((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `INSERT OR IGNORE INTO provider_assessment_submissions (id, patient_id, provider_id, insight_id, payload_json, sent_at, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [id, submission.patientId, submission.providerId, submission.insightId || null, JSON.stringify(submission.payload), sentAt, submission.status || 'sent'],
+          () => resolve(),
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+    return id;
+  }
+
+  async getSubmissionsForProvider(providerId: string): Promise<Array<{ id: string; patientId: string; insightId?: string; payload: any; sentAt: string; status: string }>> {
+    // Web fallback
+    if (this.isWebPlatform) {
+      this.loadWebStorage();
+      const submissions: Array<any> = this.webStorage.get('submissions') || [];
+      const users: Array<any> = this.webStorage.get('users') || [];
+      const rows = submissions
+        .filter(s => s.providerId === providerId)
+        .map(s => ({
+          id: s.id,
+          patientId: s.patientId,
+          insightId: s.insightId || undefined,
+          payload: s.payload,
+          sentAt: s.sentAt,
+          status: s.status,
+          patientName: (users.find(u => u.id === s.patientId) || {}).name
+        }))
+        .sort((a, b) => String(b.sentAt).localeCompare(String(a.sentAt)));
+      return rows;
+    }
+    await this.ensureDb();
+    return await new Promise((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `SELECT s.id, s.patient_id as patientId, s.insight_id as insightId, s.payload_json as payloadJson, s.sent_at as sentAt, s.status, u.name as patientName
+           FROM provider_assessment_submissions s
+           JOIN users u ON u.id = s.patient_id
+           WHERE s.provider_id = ?
+           ORDER BY s.sent_at DESC`,
+          [providerId],
+          (_tx, rs) => {
+            const rows: Array<{ id: string; patientId: string; insightId?: string; payload: any; sentAt: string; status: string; patientName?: string }> = [];
+            for (let i = 0; i < rs.rows.length; i++) {
+              const r = rs.rows.item(i);
+              let payload: any = null; try { payload = JSON.parse(r.payloadJson); } catch { payload = r.payloadJson; }
+              rows.push({ id: r.id, patientId: r.patientId, insightId: r.insightId ?? undefined, payload, sentAt: r.sentAt, status: r.status, patientName: r.patientName });
+            }
+            resolve(rows);
+          },
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+  }
+
+  async getSubmissionsForPatient(patientId: string): Promise<Array<{ id: string; providerId: string; providerName?: string; insightId?: string; payload: any; sentAt: string; status: string }>> {
+    // Web fallback
+    if (this.isWebPlatform) {
+      this.loadWebStorage();
+      const submissions: Array<any> = this.webStorage.get('submissions') || [];
+      const users: Array<any> = this.webStorage.get('users') || [];
+      const rows = submissions
+        .filter(s => s.patientId === patientId)
+        .map(s => ({
+          id: s.id,
+          providerId: s.providerId,
+          providerName: (users.find(u => u.id === s.providerId) || {}).name,
+          insightId: s.insightId || undefined,
+          payload: s.payload,
+          sentAt: s.sentAt,
+          status: s.status
+        }))
+        .sort((a, b) => String(b.sentAt).localeCompare(String(a.sentAt)));
+      return rows;
+    }
+    await this.ensureDb();
+    return await new Promise((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `SELECT s.id, s.provider_id as providerId, s.insight_id as insightId, s.payload_json as payloadJson, s.sent_at as sentAt, s.status, u.name as providerName
+           FROM provider_assessment_submissions s
+           JOIN users u ON u.id = s.provider_id
+           WHERE s.patient_id = ?
+           ORDER BY s.sent_at DESC`,
+          [patientId],
+          (_tx, rs) => {
+            const rows: Array<{ id: string; providerId: string; insightId?: string; payload: any; sentAt: string; status: string; providerName?: string }> = [];
+            for (let i = 0; i < rs.rows.length; i++) {
+              const r = rs.rows.item(i);
+              let payload: any = null; try { payload = JSON.parse(r.payloadJson); } catch { payload = r.payloadJson; }
+              rows.push({ id: r.id, providerId: r.providerId, insightId: r.insightId ?? undefined, payload, sentAt: r.sentAt, status: r.status, providerName: r.providerName });
+            }
+            resolve(rows);
+          },
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+  }
+
+  async getAllProviders(): Promise<Array<{ id: string; name: string; email: string; affiliation?: string; specialty?: string }>> {
+    // Web fallback using in-memory storage
+    if (this.isWebPlatform) {
+      this.loadWebStorage();
+      const users = (this.webStorage.get('users') || []) as Array<any>;
+      const providers = users
+        .filter(u => u.role === 'provider')
+        .map(u => ({ id: u.id, name: u.name, email: u.email, affiliation: u.location || '', specialty: '' }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      return providers;
+    }
+
+    await this.ensureDb();
+    return await new Promise((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `SELECT id, name, email, location as affiliation, '' as specialty FROM users WHERE role = 'provider' ORDER BY name ASC`,
+          [],
+          (_tx, rs) => {
+            const rows: Array<{ id: string; name: string; email: string; affiliation?: string; specialty?: string }> = [];
+            for (let i = 0; i < rs.rows.length; i++) rows.push(rs.rows.item(i));
+            resolve(rows);
+          },
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+  }
+
+  // Risk assessment history methods
+  async saveRiskAssessmentHistory(patientId: string, payload: any, createdAt?: Date): Promise<string> {
+    const id = uuidv4();
+    const at = (createdAt ?? new Date()).toISOString();
+    // Web fallback
+    if (this.isWebPlatform) {
+      this.loadWebStorage();
+      const key = `rah_${id}`;
+      this.webStorage.set(key, { id, patientId, payload, createdAt: at });
+      this.saveWebStorage();
+      return id;
+    }
+
+    await this.ensureDb();
+    await new Promise<void>((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `INSERT INTO risk_assessment_history (id, patient_id, payload_json, created_at) VALUES (?, ?, ?, ?)`,
+          [id, patientId, JSON.stringify(payload), at],
+          () => resolve(),
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+    return id;
+  }
+
+  async getRiskAssessmentHistory(patientId: string, limit: number = 50): Promise<Array<{ id: string; patientId: string; payload: any; createdAt: string }>> {
+    // Web fallback
+    if (this.isWebPlatform) {
+      this.loadWebStorage();
+      const records: Array<{ id: string; patientId: string; payload: any; createdAt: string }> = [];
+      for (const [key, value] of this.webStorage.entries()) {
+        if (key.startsWith('rah_') && value.patientId === patientId) {
+          records.push({ id: value.id, patientId: value.patientId, payload: value.payload, createdAt: value.createdAt });
+        }
+      }
+      records.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return records.slice(0, limit);
+    }
+
+    await this.ensureDb();
+    return await new Promise((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `SELECT id, patient_id as patientId, payload_json as payloadJson, created_at as createdAt
+           FROM risk_assessment_history WHERE patient_id = ? ORDER BY created_at DESC LIMIT ?`,
+          [patientId, limit],
+          (_tx, rs) => {
+            const rows: Array<{ id: string; patientId: string; payload: any; createdAt: string }> = [];
+            for (let i = 0; i < rs.rows.length; i++) {
+              const r = rs.rows.item(i);
+              let payload: any = null; try { payload = JSON.parse(r.payloadJson); } catch { payload = r.payloadJson; }
+              rows.push({ id: r.id, patientId: r.patientId, payload, createdAt: r.createdAt });
+            }
+            resolve(rows);
+          },
+          (_t, e) => { reject(e); return false; }
         );
       });
     });
@@ -1251,6 +1824,155 @@ export class DatabaseService {
     });
   }
 
+  // CHW visit methods
+  async saveCHWVisit(visit: { chwId: string; patientId: string; startedAt: string; completedAt?: string; status?: string; steps: any }): Promise<string> {
+    if (this.isWebPlatform) {
+      // Simple web fallback using in-memory map persisted to localStorage
+      const id = uuidv4();
+      const now = new Date().toISOString();
+      const shouldEncrypt = this.config.encryption;
+      const record = {
+        id,
+        chw_id: visit.chwId,
+        patient_id: visit.patientId,
+        started_at: visit.startedAt,
+        completed_at: visit.completedAt || null,
+        status: visit.status || 'in_progress',
+        steps_json: shouldEncrypt ? this.encrypt(JSON.stringify(visit.steps)) : JSON.stringify(visit.steps),
+        encrypted: shouldEncrypt ? 1 : 0,
+        created_at: now
+      } as any;
+      const list = (this.webStorage.get('chw_visits') || []) as any[];
+      list.push(record);
+      this.webStorage.set('chw_visits', list);
+      this.saveWebStorage();
+      return id;
+    }
+    await this.ensureDb();
+    const id = uuidv4();
+    const now = new Date().toISOString();
+    const shouldEncrypt = this.config.encryption;
+    const stepsJson = shouldEncrypt ? this.encrypt(JSON.stringify(visit.steps)) : JSON.stringify(visit.steps);
+    await new Promise<void>((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `INSERT INTO chw_visits (id, chw_id, patient_id, started_at, completed_at, status, steps_json, encrypted, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [id, visit.chwId, visit.patientId, visit.startedAt, visit.completedAt || null, visit.status || 'in_progress', stepsJson, shouldEncrypt ? 1 : 0, now],
+          () => resolve(),
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+    return id;
+  }
+
+  async getCHWVisitsForCHW(chwId: string, limit: number = 50): Promise<Array<{ id: string; chwId: string; patientId: string; startedAt: string; completedAt?: string; status: string; steps: any; createdAt: string }>> {
+    if (this.isWebPlatform) {
+      this.loadWebStorage();
+      const list = (this.webStorage.get('chw_visits') || []) as any[];
+      const rows = list
+        .filter(r => r.chw_id === chwId)
+        .sort((a, b) => String(b.started_at).localeCompare(String(a.started_at)))
+        .slice(0, limit)
+        .map(r => ({
+          id: r.id,
+          chwId: r.chw_id,
+          patientId: r.patient_id,
+          startedAt: r.started_at,
+          completedAt: r.completed_at || undefined,
+          status: r.status,
+          steps: r.encrypted ? JSON.parse(this.decrypt(r.steps_json)) : JSON.parse(r.steps_json),
+          createdAt: r.created_at
+        }));
+      return rows;
+    }
+    await this.ensureDb();
+    return await new Promise((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `SELECT * FROM chw_visits WHERE chw_id = ? ORDER BY started_at DESC LIMIT ?`,
+          [chwId, limit],
+          async (_tx, rs) => {
+            const rows: Array<{ id: string; chwId: string; patientId: string; startedAt: string; completedAt?: string; status: string; steps: any; createdAt: string }> = [];
+            for (let i = 0; i < rs.rows.length; i++) {
+              const r = rs.rows.item(i);
+              const stepsJson = r.steps_json;
+              let steps: any = null;
+              try { steps = r.encrypted ? JSON.parse(this.decrypt(stepsJson)) : JSON.parse(stepsJson); } catch { steps = null; }
+              rows.push({ id: r.id, chwId: r.chw_id, patientId: r.patient_id, startedAt: r.started_at, completedAt: r.completed_at || undefined, status: r.status, steps, createdAt: r.created_at });
+            }
+            resolve(rows);
+          },
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+  }
+
+  // Differential privacy and de-identification for training
+  async getDeidentifiedTrainingData(limit: number = 200, epsilon: number = 1.0): Promise<HealthDataInput[]> {
+    const addLaplace = (value: number, sensitivity = 1): number => {
+      const u = Math.random() - 0.5; // (-0.5, 0.5)
+      const b = sensitivity / epsilon;
+      return value + (-b * Math.sign(u) * Math.log(1 - 2 * Math.abs(u)));
+    };
+
+    const toInput = (row: any): HealthDataInput => {
+      let symptomsArr: string[] = [];
+      try { symptomsArr = JSON.parse(row.symptoms || '[]'); } catch {}
+      const sleep = Math.max(0, Math.min(12, addLaplace(Number(row.sleep) || 0)));
+      const stress = Math.max(1, Math.min(10, Math.round(addLaplace(Number(row.stress) || 1))));
+      const exercise = Math.max(0, Math.round(Math.max(0, addLaplace(Number(row.exercise) || 0))));
+      const severity = Math.max(1, Math.min(10, Math.round(addLaplace(Number(row.severity) || 1))));
+      return {
+        symptoms: symptomsArr.map((s: string) => s.toString().toLowerCase().slice(0, 32)),
+        severity,
+        sleep,
+        stress,
+        exercise,
+        diet: 'redacted',
+        notes: '',
+        timestamp: new Date(row.timestamp)
+      };
+    };
+
+    // Web fallback path: iterate over webStorage
+    if (this.isWebPlatform) {
+      this.loadWebStorage();
+      const records: any[] = [];
+      for (const [key, value] of this.webStorage.entries()) {
+        if (key.startsWith('health_data_')) {
+          const v = value;
+          const decryptedSymptoms = v.encrypted ? this.decrypt(v.symptoms) : v.symptoms;
+          records.push({ ...v, symptoms: decryptedSymptoms });
+        }
+      }
+      records.sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+      return records.slice(0, limit).map(toInput);
+    }
+
+    await this.ensureDb();
+    return await new Promise((resolve, reject) => {
+      this.db!.transaction(tx => {
+        tx.executeSql(
+          `SELECT timestamp, symptoms, severity, sleep, stress, exercise FROM health_data ORDER BY timestamp DESC LIMIT ?`,
+          [limit],
+          (_tx, rs) => {
+            const out: HealthDataInput[] = [];
+            for (let i = 0; i < rs.rows.length; i++) {
+              const r = rs.rows.item(i);
+              const symptoms = r.encrypted ? this.decrypt(r.symptoms) : r.symptoms;
+              out.push(toInput({ ...r, symptoms }));
+            }
+            resolve(out);
+          },
+          (_t, e) => { reject(e); return false; }
+        );
+      });
+    });
+  }
+
   async saveChatMessagesBatch(messages: Array<Omit<ChatMessage, 'id' | 'createdAt' | 'encrypted' | 'processed'>>): Promise<string[]> {
     if (!this.db) throw new Error('Database not initialized');
 
@@ -1377,26 +2099,25 @@ export class DatabaseService {
   }
 
   async getDatabaseStats(): Promise<{ users: number; healthData: number; insights: number; messages: number }> {
-    if (!this.db) throw new Error('Database not initialized');
-
+    await this.ensureDb();
     return new Promise((resolve, reject) => {
       const stats = { users: 0, healthData: 0, insights: 0, messages: 0 };
-      
       this.db!.transaction(tx => {
-        tx.executeSql('SELECT COUNT(*) as count FROM users', [], (_, { rows }) => {
-          stats.users = rows.item(0).count;
+        tx.executeSql('SELECT COUNT(*) as count FROM users', [], (_t, { rows }) => {
+          const row = rows && rows.length > 0 ? rows.item(0) : null;
+          stats.users = row?.count ?? 0;
         });
-        
-        tx.executeSql('SELECT COUNT(*) as count FROM health_data', [], (_, { rows }) => {
-          stats.healthData = rows.item(0).count;
+        tx.executeSql('SELECT COUNT(*) as count FROM health_data', [], (_t, { rows }) => {
+          const row = rows && rows.length > 0 ? rows.item(0) : null;
+          stats.healthData = row?.count ?? 0;
         });
-        
-        tx.executeSql('SELECT COUNT(*) as count FROM health_insights', [], (_, { rows }) => {
-          stats.insights = rows.item(0).count;
+        tx.executeSql('SELECT COUNT(*) as count FROM health_insights', [], (_t, { rows }) => {
+          const row = rows && rows.length > 0 ? rows.item(0) : null;
+          stats.insights = row?.count ?? 0;
         });
-        
-        tx.executeSql('SELECT COUNT(*) as count FROM chat_messages', [], (_, { rows }) => {
-          stats.messages = rows.item(0).count;
+        tx.executeSql('SELECT COUNT(*) as count FROM chat_messages', [], (_t, { rows }) => {
+          const row = rows && rows.length > 0 ? rows.item(0) : null;
+          stats.messages = row?.count ?? 0;
         });
       }, 
       (error) => {

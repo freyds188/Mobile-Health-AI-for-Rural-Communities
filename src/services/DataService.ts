@@ -7,7 +7,7 @@ export interface UserProfile {
   id: string;
   email: string;
   name: string;
-  role: 'patient' | 'provider' | 'admin';
+  role: 'patient' | 'provider' | 'admin' | 'chw';
   age?: number;
   gender?: 'male' | 'female' | 'other';
   location?: string;
@@ -226,6 +226,162 @@ export class DataService {
     console.log('🔧 DataService: Initializing DataService');
   }
 
+  // Provider APIs
+  private ensureCHWOrProvider(role?: UserProfile['role']): void {
+    if (!role || !['provider', 'admin', 'chw'].includes(role)) {
+      throw new Error('Permission denied: CHW/Provider/Admin role required');
+    }
+  }
+  async assignPatientToProvider(patientId: string, providerId: string): Promise<void> {
+    await this.ensureInitialized();
+    await databaseService.assignPatientToProvider(patientId, providerId);
+  }
+
+  async getAssignedPatients(providerId: string): Promise<Array<{ id: string; name: string; email: string }>> {
+    await this.ensureInitialized();
+    return await databaseService.getAssignedPatients(providerId);
+  }
+
+  async getPatientInsightsForProvider(providerId: string): Promise<Array<AnalysisReport & { patientName: string }>> {
+    await this.ensureInitialized();
+    const rows = await databaseService.getPatientInsightsForProvider(providerId);
+    return rows.map(r => ({
+      id: r.id,
+      userId: r.userId,
+      timestamp: new Date(r.timestamp),
+      riskLevel: r.riskLevel,
+      patterns: JSON.parse(r.patterns),
+      recommendations: JSON.parse(r.recommendations),
+      confidence: r.confidence,
+      algorithmVersion: r.algorithmVersion,
+      createdAt: new Date(r.createdAt),
+      patientName: (r as any).patientName
+    }));
+  }
+
+  async saveProviderFeedback(feedback: { providerId: string; patientId: string; insightId?: string; feedbackText: string; rating?: number }): Promise<string> {
+    await this.ensureInitialized();
+    const stableId = `fdbk-${feedback.providerId}-${feedback.patientId}-${Date.now()}`;
+    return await databaseService.saveProviderFeedback({ id: stableId, ...feedback });
+  }
+
+  async getFeedbackForPatient(patientId: string): Promise<Array<{ id: string; providerId: string; feedbackText: string; rating: number | null; createdAt: Date }>> {
+    await this.ensureInitialized();
+    const rows = await databaseService.getFeedbackForPatient(patientId);
+    return rows.map(r => ({ ...r, createdAt: new Date(r.createdAt) }));
+  }
+
+  async sendAssessmentToAssignedProvider(patientId: string, assessmentPayload: any, insightId?: string): Promise<{ success: boolean; submissionId?: string; providerCount: number }>{
+    await this.ensureInitialized();
+    try {
+      // RBAC: only CHW/Provider/Admin can send assessments
+      // Note: in a real app we'd get current user from context; here we log only
+      try { await securityService.logAction(patientId, 'chw_assessment_attempt', 'assessment', true, { size: JSON.stringify(assessmentPayload).length }); } catch {}
+      // ensure history store first (best-effort)
+      try { await databaseService.saveRiskAssessmentHistory(patientId, assessmentPayload, new Date()); } catch (e) { console.warn('saveRiskAssessmentHistory failed (non-fatal):', e); }
+
+      // find assigned providers
+      const providers = await databaseService.getProvidersForPatient(patientId);
+      if (!providers || providers.length === 0) {
+        console.warn('No assigned providers for patient', patientId);
+        return { success: false, providerCount: 0 };
+      }
+      let lastId: string | undefined;
+      let successCount = 0;
+      for (const p of providers) {
+        try {
+          const stableId = `sub-${patientId}-${p.id}-${Date.now()}`;
+          const submissionId = await databaseService.saveAssessmentSubmission({
+            id: stableId,
+            patientId,
+            providerId: p.id,
+            insightId,
+            payload: assessmentPayload,
+            status: 'sent'
+          });
+          lastId = submissionId;
+          successCount++;
+        } catch (e) {
+          console.error('Failed to save submission for provider', p.id, e);
+        }
+      }
+      return { success: successCount > 0, submissionId: lastId, providerCount: providers.length };
+    } catch (error) {
+      console.error('sendAssessmentToAssignedProvider failed:', error);
+      return { success: false, providerCount: 0 };
+    }
+  }
+
+  // CHW helpers
+  async createCHWVisit(currentUser: UserProfile | null, visit: { patientId: string; steps: any; startedAt?: Date }): Promise<string> {
+    await this.ensureInitialized();
+    this.ensureCHWOrProvider(currentUser?.role);
+    const id = await databaseService.saveCHWVisit({
+      chwId: currentUser!.id,
+      patientId: visit.patientId,
+      startedAt: (visit.startedAt ?? new Date()).toISOString(),
+      status: 'in_progress',
+      steps: visit.steps
+    });
+    try { await securityService.logAction(currentUser!.id, 'chw_visit_created', 'chw_visit', true, { visitId: id }); } catch {}
+    return id;
+  }
+
+  async listCHWVisits(currentUser: UserProfile | null, limit: number = 50) {
+    await this.ensureInitialized();
+    this.ensureCHWOrProvider(currentUser?.role);
+    return await databaseService.getCHWVisitsForCHW(currentUser!.id, limit);
+  }
+
+  async sendAssessmentToSpecificProvider(patientId: string, providerId: string, assessmentPayload: any, insightId?: string): Promise<{ success: boolean; submissionId?: string }>{
+    await this.ensureInitialized();
+    try {
+      // Save to history if not already saved (best-effort)
+      try { await databaseService.saveRiskAssessmentHistory(patientId, assessmentPayload, new Date()); } catch (e) { console.warn('saveRiskAssessmentHistory failed (non-fatal):', e); }
+      const stableId = `sub-${patientId}-${providerId}-${Date.now()}`;
+      const submissionId = await databaseService.saveAssessmentSubmission({
+        id: stableId,
+        patientId,
+        providerId,
+        insightId,
+        payload: assessmentPayload,
+        status: 'sent'
+      });
+      return { success: true, submissionId };
+    } catch (error) {
+      console.error('sendAssessmentToSpecificProvider failed:', error);
+      return { success: false };
+    }
+  }
+
+  async listAllProviders(): Promise<Array<{ id: string; name: string; email: string; affiliation?: string; specialty?: string }>> {
+    await this.ensureInitialized();
+    return await databaseService.getAllProviders();
+  }
+
+  async getSubmissionsForProvider(providerId: string): Promise<Array<{ id: string; patientId: string; patientName?: string; insightId?: string; payload: any; sentAt: Date; status: string }>> {
+    await this.ensureInitialized();
+    const rows = await databaseService.getSubmissionsForProvider(providerId);
+    return rows.map(r => ({ ...r, sentAt: new Date(r.sentAt) }));
+  }
+
+  async getSubmissionsForPatient(patientId: string): Promise<Array<{ id: string; providerId: string; providerName?: string; insightId?: string; payload: any; sentAt: Date; status: string }>> {
+    await this.ensureInitialized();
+    const rows = await databaseService.getSubmissionsForPatient(patientId);
+    return rows.map(r => ({ ...r, sentAt: new Date(r.sentAt) }));
+  }
+
+  async getRiskAssessmentHistory(patientId: string, limit: number = 50): Promise<Array<{ id: string; payload: any; createdAt: Date }>> {
+    await this.ensureInitialized();
+    const rows = await databaseService.getRiskAssessmentHistory(patientId, limit);
+    return rows.map(r => ({ id: r.id, payload: r.payload, createdAt: new Date(r.createdAt) }));
+  }
+
+  async saveRiskAssessmentHistory(patientId: string, payload: any, createdAt?: Date): Promise<string> {
+    await this.ensureInitialized();
+    return await databaseService.saveRiskAssessmentHistory(patientId, payload, createdAt);
+  }
+
   /**
    * Initialize the data service and all dependencies
    */
@@ -311,7 +467,7 @@ export class DataService {
     email: string;
     password: string;
     name: string;
-    role: 'patient' | 'provider' | 'admin';
+    role: 'patient' | 'provider' | 'admin' | 'chw';
     age?: number;
     gender?: 'male' | 'female' | 'other';
     location?: string;
@@ -674,7 +830,7 @@ export class DataService {
       const trendsAnalysis = this.calculateTrends(healthRecords);
 
       // Save analysis to database
-      await databaseService.saveHealthInsight({
+      const newInsightId = await databaseService.saveHealthInsight({
         userId,
         timestamp: mlAnalysis.timestamp.toISOString(),
         riskLevel: mlAnalysis.riskLevel,
@@ -683,6 +839,22 @@ export class DataService {
         confidence: mlAnalysis.confidence,
         algorithmVersion: mlAnalysis.version
       });
+
+      // Notify assigned providers (best-effort)
+      try {
+        const assigned = await databaseService.getProvidersForPatient(userId);
+        if (Array.isArray(assigned) && assigned.length > 0) {
+          // Currently we have local notifications only. In a real backend we'd push to providers.
+          // For now, just log for visibility.
+          console.log('🔔 Notifying providers about new insight:', {
+            patientId: userId,
+            insightId: newInsightId,
+            providerCount: assigned.length
+          });
+        }
+      } catch (notifyError) {
+        console.warn('⚠️ Provider notification failed (non-fatal):', notifyError);
+      }
 
       const analysisReport: AnalysisReport = {
         id: mlAnalysis.id,

@@ -1,8 +1,10 @@
 import { dataService } from '../services/DataService';
 import { securityService } from '../services/SecurityService';
 import ModelDeploymentService from '../services/ModelDeploymentService';
+import { continuousLearningService } from '../services/ContinuousLearningService';
 import { notificationService } from '../services/NotificationService';
 import { offlineQueue } from './OfflineQueue';
+import MLTrainingService from '../services/MLTrainingService';
 
 export const initializeApp = async (): Promise<boolean> => {
   try {
@@ -75,6 +77,19 @@ export const initializeApp = async (): Promise<boolean> => {
         return true;
       });
     } catch {}
+
+    // Optional: light-touch continuous learning kick-off (non-blocking)
+    try {
+      setTimeout(() => {
+        continuousLearningService.maybeRetrainAndDeploy().then(r => {
+          if (r.deployed) {
+            console.log('🔄 Continuous learning deployed a new model');
+          } else {
+            console.log('ℹ️ Continuous learning result:', r.reason || 'skipped');
+          }
+        }).catch(() => {});
+      }, 0);
+    } catch {}
     
     // Create demo user for immediate functionality (especially on web)
     if (typeof window !== 'undefined') {
@@ -126,6 +141,29 @@ export const createDemoUser = async (): Promise<boolean> => {
       console.log('Note: Could not add sample data:', seedError);
     }
     
+    // Create demo provider if missing and assign
+    try {
+      let providerAuth: any = null;
+      try { providerAuth = await dataService.authenticateUser('provider@healthai.com', 'provider123'); } catch {}
+      let providerId: string;
+      if (!providerAuth) {
+        const provider = await dataService.createUser({
+          name: 'Demo Provider',
+          email: 'provider@healthai.com',
+          password: 'provider123',
+          role: 'provider',
+          age: 35,
+          gender: 'male',
+          location: 'Demo City',
+          medicalHistory: ''
+        });
+        providerId = provider.id;
+      } else {
+        providerId = providerAuth.user.id;
+      }
+      await dataService.assignPatientToProvider(demoUser.id, providerId);
+    } catch {}
+
     return true;
   } catch (error) {
     console.log('ℹ️ Demo user might already exist or creation failed:', error instanceof Error ? error.message : String(error));

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { securityService } from '../services/SecurityService';
 
 export interface QueuedOperation<T = any> {
   id: string;
@@ -18,7 +19,18 @@ export class OfflineQueue {
     if (this.isLoaded) return;
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      this.queue = raw ? JSON.parse(raw) : [];
+      if (raw) {
+        try {
+          // Try decrypting first
+          const decrypted = await securityService.decryptData(raw);
+          this.queue = JSON.parse(decrypted);
+        } catch {
+          // Fallback for legacy plaintext
+          this.queue = JSON.parse(raw);
+        }
+      } else {
+        this.queue = [];
+      }
     } catch {
       this.queue = [];
     } finally {
@@ -28,7 +40,13 @@ export class OfflineQueue {
 
   private async persist(): Promise<void> {
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(this.queue));
+      try {
+        const encrypted = securityService.encryptData(JSON.stringify(this.queue));
+        await AsyncStorage.setItem(STORAGE_KEY, encrypted);
+      } catch {
+        // Fallback to plaintext if encryption not ready
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(this.queue));
+      }
     } catch {}
   }
 

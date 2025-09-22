@@ -7,7 +7,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  role: 'patient' | 'provider' | 'admin';
+  role: 'patient' | 'provider' | 'admin' | 'chw';
   age?: number;
   gender?: 'male' | 'female' | 'other';
   location?: string;

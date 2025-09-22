@@ -189,25 +189,28 @@ export class DataImportService {
     console.log('📊 Retrieving imported data for ML training...');
     
     try {
-      // Get health data from database
-      const healthRecords = await this.databaseService.getHealthData(
-        userId || 'all_users', 
-        100 // Get up to 100 recent records
-      );
+      // Prefer de-identified, DP-protected data when aggregating across users
+      if (!userId) {
+        const dpData = await this.databaseService.getDeidentifiedTrainingData(200, 1.0);
+        console.log(`✅ Retrieved ${dpData.length} de-identified records for training`);
+        return dpData;
+      }
 
-      // Convert database format to ML format
+      // If training for a single user, fetch only that user's data (still sanitized client-side)
+      const healthRecords = await this.databaseService.getHealthData(userId, 100);
+
       const trainingData: HealthDataInput[] = healthRecords.map(record => ({
-        symptoms: JSON.parse(record.symptoms || '[]'),
+        symptoms: (() => { try { return JSON.parse(record.symptoms || '[]'); } catch { return []; } })(),
         severity: record.severity,
         sleep: record.sleep,
         stress: record.stress,
         exercise: record.exercise,
-        diet: record.diet,
-        notes: record.notes,
+        diet: 'redacted',
+        notes: '',
         timestamp: new Date(record.timestamp)
       }));
 
-      console.log(`✅ Retrieved ${trainingData.length} health records for training`);
+      console.log(`✅ Retrieved ${trainingData.length} user-specific records for training`);
       return trainingData;
       
     } catch (error) {

@@ -2,14 +2,22 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import DashboardScreen from '../screens/DashboardScreen';
-import RiskAssessmentScreen from '../screens/RiskAssessmentScreen';
+import ProviderDashboardScreen from '../screens/provider/ProviderDashboardScreen';
+import ProviderStackNavigator from './ProviderStackNavigator';
+import { useAuth } from '../contexts/AuthContext';
+import RiskAssessmentStackNavigator from './RiskAssessmentStackNavigator';
 import ChatbotScreen from '../screens/ChatbotScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import HealthStackNavigator from './HealthStackNavigator';
+import PatientInboxScreen from '../screens/PatientInboxScreen';
 
 const Tab = createBottomTabNavigator();
 
 const MainTabNavigator = () => {
+  const { user } = useAuth();
+  const isProvider = user?.role === 'provider' || user?.role === 'admin';
+  const isCHW = user?.role === 'chw';
+  const isPatient = user?.role === 'patient';
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -26,6 +34,8 @@ const MainTabNavigator = () => {
             iconName = focused ? 'chatbubble' : 'chatbubble-outline';
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
+          } else if (route.name === 'CHW') {
+            iconName = focused ? 'clipboard' : 'clipboard-outline';
           } else {
             iconName = 'help-outline';
           }
@@ -51,11 +61,20 @@ const MainTabNavigator = () => {
     >
       <Tab.Screen 
         name="Home" 
-        component={DashboardScreen}
+        component={isProvider ? ProviderStackNavigator : DashboardScreen}
         options={{
           tabBarLabel: 'Home',
         }}
       />
+      {isCHW && (
+        <Tab.Screen 
+          name="CHW" 
+          component={require('./CHWStackNavigator').default}
+          options={{
+            tabBarLabel: 'CHW',
+          }}
+        />
+      )}
       <Tab.Screen 
         name="Log Health" 
         component={HealthStackNavigator}
@@ -65,11 +84,23 @@ const MainTabNavigator = () => {
       />
       <Tab.Screen 
         name="Risk Assessment" 
-        component={RiskAssessmentScreen}
+        component={RiskAssessmentStackNavigator}
         options={{
           tabBarLabel: 'Risk Assessment',
         }}
       />
+      {isPatient && (
+        <Tab.Screen 
+          name="Inbox" 
+          component={PatientInboxScreen}
+          options={{
+            tabBarLabel: 'Inbox',
+            tabBarIcon: ({ focused, color, size }) => (
+              <Ionicons name={focused ? 'mail' : 'mail-outline'} size={size} color={color} />
+            )
+          }}
+        />
+      )}
       <Tab.Screen 
         name="Chatbot" 
         component={ChatbotScreen}

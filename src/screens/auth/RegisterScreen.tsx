@@ -487,21 +487,7 @@ const RegisterScreen = ({ navigation }: any) => {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.debugButton}
-              onPress={async () => {
-                try {
-                  await dataService.getDatabaseService().clearWebStorageUsers();
-                  Alert.alert('🧹 Storage Cleared', 'Web storage users cleared. You can now register fresh.');
-                } catch (error) {
-                  Alert.alert('Error', 'Could not clear storage: ' + String(error));
-                }
-              }}
-            >
-              <Text style={styles.debugButtonText}>
-                🧹 Clear Web Storage (Testing)
-              </Text>
-            </TouchableOpacity>
+            {/* Debug/testing button removed for production */}
 
 
             

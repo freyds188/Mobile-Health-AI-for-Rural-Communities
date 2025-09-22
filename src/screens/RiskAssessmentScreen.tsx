@@ -16,6 +16,7 @@ import { DatabaseInitializationHelper } from '../utils/DatabaseInitializationHel
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { notificationService } from '../services/NotificationService';
+import { dataService } from '../services/DataService';
 import ModelDeploymentService from '../services/ModelDeploymentService';
 
 // Available symptoms for selection
@@ -59,6 +60,7 @@ const RiskAssessmentScreen = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  // provider selection removed from this screen
 
   const formatDate = (date: Date | string): string => {
     const d = new Date(date);
@@ -102,6 +104,18 @@ const RiskAssessmentScreen = () => {
       const result = await riskAssessmentService.performRiskAssessment(user.id, selectedSymptoms);
       console.log('📊 RiskAssessmentScreen: Assessment result:', result);
       setAssessment(result);
+      // Save to history (single, explicit call)
+      try {
+        const payload = {
+          assessmentId: result.id,
+          overallRiskLevel: (result as any).overallRiskLevel || (result as any).overallRisk || 'unknown',
+          potentialConditions: (result as any).potentialConditions || [],
+          recommendations: (result as any).potentialConditions?.flatMap((c: any) => c.recommendations) || [],
+          timestamp: result.timestamp || new Date().toISOString(),
+          selectedSymptoms
+        };
+        await dataService.saveRiskAssessmentHistory(user.id, payload, new Date());
+      } catch {}
       try { await notificationService.sendRiskAlert(result.overallRisk as any); } catch {}
       console.log('✅ RiskAssessmentScreen: Symptom analysis completed');
     } catch (error) {
@@ -116,6 +130,9 @@ const RiskAssessmentScreen = () => {
       setAnalyzing(false);
     }
   };
+
+  // provider selection & sending handled in History screen
+
 
   const performRiskAssessment = async () => {
     await performSymptomAnalysis();
@@ -243,6 +260,8 @@ const RiskAssessmentScreen = () => {
           </View>
         </View>
 
+        {/* Provider selection removed; sending is done from History */}
+
         {/* Selected Symptoms Summary */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Selected Symptoms</Text>
@@ -365,7 +384,7 @@ const RiskAssessmentScreen = () => {
           </View>
         )}
 
-        {/* New Assessment Button */}
+        {/* Actions */}
         <View style={styles.section}>
           <TouchableOpacity 
             style={styles.newAssessmentButton} 
@@ -821,6 +840,47 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     flex: 1,
   },
+  providerPicker: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  providerSearch: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E1E5E9',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#333'
+  },
+  providerList: {
+    marginTop: 12,
+  },
+  providerItem: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  providerItemSelected: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+  },
+  providerName: {
+    fontWeight: '700',
+    color: '#2E7D32'
+  },
+  providerEmail: {
+    color: '#666',
+    fontSize: 12
+  },
   newAssessmentButton: {
     backgroundColor: '#28A745',
     flexDirection: 'row',
@@ -836,6 +896,27 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   newAssessmentButtonText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: '700',
+    marginLeft: 12,
+  },
+  sendButton: {
+    backgroundColor: '#2E7D32',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+    marginBottom: 12,
+  },
+  sendButtonText: {
     color: 'white',
     fontSize: 20,
     fontWeight: '700',
