@@ -1,0 +1,8 @@
+Metric,Value
+MAE,0.1
+MSE,0.01
+RMSE,0.1
+R_Squared,0.995
+MAPE,4.56666666666667
+Median_AE,0.1
+Max_Error,0.1

@@ -8,20 +8,61 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
-import { useHealthData, HealthData } from '../contexts/HealthDataContext';
+import { useHealthData, HealthData, HealthInsight } from '../contexts/HealthDataContext';
 import { fontFamily } from '../utils/fonts';
 
 const HealthLogHistoryScreen = () => {
   const { user } = useAuth();
-  const { healthData, isLoading, refreshData } = useHealthData();
+  const { healthData, insights, isLoading, refreshData } = useHealthData();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'week' | 'month'>('all');
+  const [selectedInsight, setSelectedInsight] = useState<HealthInsight | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const userHealthData = user ? healthData.filter(data => data.userId === user.id) : [];
+  const userInsights = user ? insights.filter(insight => insight.userId === user.id) : [];
+
+  // Function to find insight for a health entry (by timestamp proximity)
+  const findInsightForEntry = (entryTimestamp: Date): HealthInsight | null => {
+    const entryTime = new Date(entryTimestamp).getTime();
+    
+    console.log(`🔍 Finding insight for entry at ${entryTimestamp.toISOString()}`);
+    console.log(`🧠 Available insights count: ${userInsights.length}`);
+    
+    // Find insight within 2 hours of the health entry (increased window)
+    const matchingInsight = userInsights.find(insight => {
+      const insightTime = new Date(insight.timestamp).getTime();
+      const timeDiff = Math.abs(entryTime - insightTime);
+      const timeDiffMinutes = timeDiff / (1000 * 60);
+      
+      console.log(`⏰ Insight ${insight.id}: ${insight.timestamp.toISOString()}, diff: ${timeDiffMinutes.toFixed(1)} minutes`);
+      
+      return timeDiff <= 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+    });
+    
+    if (matchingInsight) {
+      console.log(`✅ Found matching insight: ${matchingInsight.id}`);
+    } else {
+      console.log('❌ No matching insight found');
+    }
+    
+    return matchingInsight || null;
+  };
+
+  const openAnalysisModal = (insight: HealthInsight) => {
+    setSelectedInsight(insight);
+    setModalVisible(true);
+  };
+
+  const closeAnalysisModal = () => {
+    setModalVisible(false);
+    setSelectedInsight(null);
+  };
 
   useEffect(() => {
     if (user) {
@@ -33,8 +74,10 @@ const HealthLogHistoryScreen = () => {
   useEffect(() => {
     console.log('📋 HealthLogHistoryScreen: Data updated - Total health data:', healthData.length);
     console.log('📋 HealthLogHistoryScreen: User health data:', userHealthData.length);
+    console.log('🧠 HealthLogHistoryScreen: Total insights:', insights.length);
+    console.log('🧠 HealthLogHistoryScreen: User insights:', userInsights.length);
     console.log('📋 HealthLogHistoryScreen: Current user:', user?.id);
-  }, [healthData, userHealthData, user]);
+  }, [healthData, userHealthData, insights, userInsights, user]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -115,7 +158,10 @@ const HealthLogHistoryScreen = () => {
     );
   };
 
-  const renderHealthLogEntry = (entry: HealthData, index: number) => (
+  const renderHealthLogEntry = (entry: HealthData, index: number) => {
+    const associatedInsight = findInsightForEntry(entry.timestamp);
+    
+    return (
     <View key={entry.id} style={styles.logEntry}>
       <View style={styles.entryHeader}>
         <View style={styles.entryHeaderLeft}>
@@ -124,12 +170,7 @@ const HealthLogHistoryScreen = () => {
           </View>
           <Text style={styles.entryDate}>{formatDate(entry.timestamp)}</Text>
         </View>
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteEntry(entry.id, entry.timestamp)}
-        >
-          <Ionicons name="trash-outline" size={20} color="#666" />
-        </TouchableOpacity>
+       
       </View>
 
       <View style={styles.entryContent}>
@@ -181,11 +222,158 @@ const HealthLogHistoryScreen = () => {
             </View>
           )}
         </View>
+
+        {/* Analysis Results Section */}
+        {associatedInsight && (
+          <View style={styles.analysisSection}>
+            <View style={styles.analysisSectionHeader}>
+              <Ionicons name="analytics" size={16} color="#1976D2" />
+              <Text style={styles.analysisSectionTitle}>AI Health Analysis</Text>
+              <TouchableOpacity 
+                style={styles.viewAnalysisButton}
+                onPress={() => openAnalysisModal(associatedInsight)}
+              >
+                <Text style={styles.viewAnalysisButtonText}>View Details</Text>
+                <Ionicons name="chevron-forward" size={16} color="#1976D2" />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.analysisPreview}>
+              <View style={styles.riskLevelContainer}>
+                <Ionicons 
+                  name={
+                    associatedInsight.riskLevel === 'low' ? 'checkmark-circle' :
+                    associatedInsight.riskLevel === 'medium' ? 'warning' : 'alert-circle'
+                  } 
+                  size={20} 
+                  color={
+                    associatedInsight.riskLevel === 'low' ? '#4CAF50' :
+                    associatedInsight.riskLevel === 'medium' ? '#FF9800' : '#F44336'
+                  }
+                />
+                <Text style={[
+                  styles.riskLevelText,
+                  { color: 
+                    associatedInsight.riskLevel === 'low' ? '#4CAF50' :
+                    associatedInsight.riskLevel === 'medium' ? '#FF9800' : '#F44336'
+                  }
+                ]}>
+                  {associatedInsight.riskLevel.toUpperCase()} RISK
+                </Text>
+                <Text style={styles.confidenceText}>
+                  {Math.round(associatedInsight.confidence * 100)}% confidence
+                </Text>
+              </View>
+              
+              {associatedInsight.recommendations.length > 0 && (
+                <Text style={styles.recommendationPreview} numberOfLines={2}>
+                  💡 {associatedInsight.recommendations[0].substring(0, 100)}...
+                </Text>
+              )}
+            </View>
+          </View>
+        )}
       </View>
     </View>
-  );
+    );
+  };
 
   const filteredData = getFilteredData();
+
+  // Analysis Modal Component
+  const renderAnalysisModal = () => (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={modalVisible}
+      onRequestClose={closeAnalysisModal}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>AI Health Analysis</Text>
+            <TouchableOpacity onPress={closeAnalysisModal} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+          
+          {selectedInsight && (
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {/* Risk Assessment */}
+              <View style={styles.modalSection}>
+                <View style={styles.modalSectionHeader}>
+                  <Ionicons name="shield-checkmark" size={20} color="#2E7D32" />
+                  <Text style={styles.modalSectionTitle}>Risk Assessment</Text>
+                </View>
+                <View style={styles.riskAssessmentCard}>
+                  <View style={styles.riskHeader}>
+                    <Ionicons 
+                      name={
+                        selectedInsight.riskLevel === 'low' ? 'checkmark-circle' :
+                        selectedInsight.riskLevel === 'medium' ? 'warning' : 'alert-circle'
+                      } 
+                      size={24} 
+                      color={
+                        selectedInsight.riskLevel === 'low' ? '#4CAF50' :
+                        selectedInsight.riskLevel === 'medium' ? '#FF9800' : '#F44336'
+                      }
+                    />
+                    <Text style={[
+                      styles.modalRiskLevel,
+                      { color: 
+                        selectedInsight.riskLevel === 'low' ? '#4CAF50' :
+                        selectedInsight.riskLevel === 'medium' ? '#FF9800' : '#F44336'
+                      }
+                    ]}>
+                      {selectedInsight.riskLevel.toUpperCase()} RISK
+                    </Text>
+                  </View>
+                  <Text style={styles.modalConfidence}>
+                    Confidence: {Math.round(selectedInsight.confidence * 100)}%
+                  </Text>
+                  <Text style={styles.analysisDate}>
+                    Analysis Date: {new Date(selectedInsight.timestamp).toLocaleString()}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Patterns */}
+              {selectedInsight.patterns.length > 0 && (
+                <View style={styles.modalSection}>
+                  <View style={styles.modalSectionHeader}>
+                    <Ionicons name="trending-up" size={20} color="#2E7D32" />
+                    <Text style={styles.modalSectionTitle}>Analysis Patterns</Text>
+                  </View>
+                  <View style={styles.patternsContainer}>
+                    {selectedInsight.patterns.map((pattern, index) => (
+                      <Text key={index} style={styles.patternItem}>• {pattern}</Text>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Recommendations */}
+              {selectedInsight.recommendations.length > 0 && (
+                <View style={styles.modalSection}>
+                  <View style={styles.modalSectionHeader}>
+                    <Ionicons name="bulb" size={20} color="#2E7D32" />
+                    <Text style={styles.modalSectionTitle}>Recommendations</Text>
+                  </View>
+                  <View style={styles.recommendationsContainer}>
+                    {selectedInsight.recommendations.map((recommendation, index) => (
+                      <Text key={index} style={styles.recommendationText}>
+                        {recommendation}
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
 
   if (isLoading && filteredData.length === 0) {
     return (
@@ -200,6 +388,7 @@ const HealthLogHistoryScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+      {renderAnalysisModal()}
       {/* Filter Buttons */}
       <View style={styles.filterContainer}>
         <TouchableOpacity
@@ -257,7 +446,13 @@ const HealthLogHistoryScreen = () => {
                 selectedFilter === 'week' ? 'this week' : 'this month'
               }
             </Text>
+            {userInsights.length > 0 && (
+              <Text style={styles.insightsStatsText}>
+                🧠 {userInsights.length} AI {userInsights.length === 1 ? 'analysis' : 'analyses'} available
+              </Text>
+            )}
           </View>
+
 
           {filteredData.map((entry, index) => renderHealthLogEntry(entry, index))}
 
@@ -326,6 +521,12 @@ const styles = StyleSheet.create({
   statsText: {
     fontSize: 16,
     color: '#666',
+    fontFamily: fontFamily.body,
+  },
+  insightsStatsText: {
+    fontSize: 14,
+    color: '#1976D2',
+    marginTop: 5,
     fontFamily: fontFamily.body,
   },
   logEntry: {
@@ -500,6 +701,180 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 20,
+  },
+  // Analysis section styles
+  analysisSection: {
+    marginTop: 15,
+    padding: 15,
+    backgroundColor: '#f0f8ff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e3f2fd',
+  },
+  analysisSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  analysisSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1976D2',
+    marginLeft: 8,
+    flex: 1,
+    fontFamily: fontFamily.bodySemiBold,
+  },
+  viewAnalysisButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#1976D2',
+  },
+  viewAnalysisButtonText: {
+    fontSize: 12,
+    color: '#1976D2',
+    fontWeight: '600',
+    marginRight: 4,
+    fontFamily: fontFamily.bodySemiBold,
+  },
+  analysisPreview: {
+    gap: 10,
+  },
+  riskLevelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  riskLevelText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    fontFamily: fontFamily.buttonBold,
+  },
+  confidenceText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 'auto',
+    fontFamily: fontFamily.body,
+  },
+  recommendationPreview: {
+    fontSize: 13,
+    color: '#333',
+    fontStyle: 'italic',
+    lineHeight: 18,
+    fontFamily: fontFamily.body,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+    minHeight: '50%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    fontFamily: fontFamily.headingMedium,
+  },
+  closeButton: {
+    padding: 5,
+  },
+  modalBody: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+  },
+  modalSection: {
+    marginBottom: 20,
+  },
+  modalSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2E7D32',
+    marginLeft: 8,
+    fontFamily: fontFamily.bodySemiBold,
+  },
+  riskAssessmentCard: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  riskHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  modalRiskLevel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 8,
+    fontFamily: fontFamily.headingMedium,
+  },
+  modalConfidence: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 5,
+    fontFamily: fontFamily.bodySemiBold,
+  },
+  analysisDate: {
+    fontSize: 14,
+    color: '#666',
+    fontFamily: fontFamily.body,
+  },
+  patternsContainer: {
+    backgroundColor: '#fff3e0',
+    borderRadius: 12,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#ffcc02',
+  },
+  patternItem: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 5,
+    lineHeight: 20,
+    fontFamily: fontFamily.body,
+  },
+  recommendationsContainer: {
+    backgroundColor: '#e8f5e9',
+    borderRadius: 12,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#c8e6c9',
+  },
+  recommendationText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 22,
+    marginBottom: 10,
+    fontFamily: fontFamily.body,
   },
 });
 

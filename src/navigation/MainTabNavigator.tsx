@@ -56,6 +56,7 @@ const MainTabNavigator = () => {
           fontSize: 12,
           fontWeight: '600',
         },
+        tabBarShowLabel: false,
         headerShown: false,
       })}
     >

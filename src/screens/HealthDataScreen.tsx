@@ -17,12 +17,14 @@ import { fontFamily } from '../utils/fonts';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { HealthStackParamList } from '../navigation/HealthStackNavigator';
+import { adviceService } from '../services/AdviceService';
+import { ProductionRiskAssessment } from '../services/ProductionRiskAssessment';
 
 type HealthDataScreenNavigationProp = StackNavigationProp<HealthStackParamList, 'Log Health Main'>;
 
 const HealthDataScreen = () => {
   const { user } = useAuth();
-  const { addHealthData, refreshData } = useHealthData();
+  const { addHealthData, refreshData, saveAnalysisInsight } = useHealthData();
   const navigation = useNavigation<HealthDataScreenNavigationProp>();
   const [formData, setFormData] = useState({
     symptoms: [] as string[],
@@ -33,6 +35,15 @@ const HealthDataScreen = () => {
     diet: 'balanced',
     notes: '',
   });
+
+  const [analysisResult, setAnalysisResult] = useState<{
+    riskAssessment?: any;
+    recommendations?: string;
+    confidence?: number;
+    isAnalyzing?: boolean;
+  }>({});
+
+  const riskAssessmentService = new ProductionRiskAssessment();
 
   const symptomOptions = [
     { label: 'Headache', value: 'headache' },
@@ -65,6 +76,92 @@ const HealthDataScreen = () => {
         ? prev.symptoms.filter(s => s !== symptom)
         : [...prev.symptoms, symptom]
     }));
+  };
+
+  const analyzeHealthInput = async () => {
+    console.log('🔍 Starting health input analysis...');
+    
+    if (formData.symptoms.length === 0) {
+      Alert.alert('⚠️ Missing Information', 'Please select at least one symptom to analyze');
+      return;
+    }
+
+    setAnalysisResult(prev => ({ ...prev, isAnalyzing: true }));
+
+    try {
+      // Prepare data for risk assessment
+      const healthData = {
+        symptoms: formData.symptoms,
+        severity: formData.severity,
+        sleep: formData.sleep,
+        stress: formData.stress,
+        exercise: formData.exercise,
+        diet: formData.diet,
+        notes: formData.notes,
+      };
+
+      console.log('📊 Performing risk assessment...', healthData);
+
+      // Get risk assessment from production model
+      const riskAssessment = riskAssessmentService.assessRisk(healthData);
+      
+      console.log('✅ Risk assessment completed:', riskAssessment);
+
+      // Generate personalized advice using AdviceService
+      const adviceContext = {
+        intent: 'health_inquiry',
+        entities: formData.symptoms,
+        severity: formData.severity,
+        durationText: formData.notes,
+      };
+
+      const generatedAdvice = adviceService.generateAdvice(adviceContext);
+      
+      console.log('💡 Generated recommendations:', generatedAdvice);
+
+      // Combine results
+      setAnalysisResult({
+        riskAssessment,
+        recommendations: generatedAdvice.text,
+        confidence: riskAssessment.confidence,
+        isAnalyzing: false,
+      });
+
+      // Save analysis results to history
+      try {
+        console.log('💾 Saving analysis results to history...');
+        const saved = await saveAnalysisInsight(riskAssessment, generatedAdvice.text);
+        if (saved) {
+          console.log('✅ Analysis results saved to history successfully');
+          
+          // Show success message to user
+          setTimeout(() => {
+            Alert.alert(
+              '✅ Analysis Complete',
+              'Your health analysis has been completed and saved to your history. You can view past analyses in your dashboard.',
+              [{ text: 'Got it!' }]
+            );
+          }, 500);
+        } else {
+          console.warn('⚠️ Failed to save analysis results to history');
+        }
+      } catch (saveError) {
+        console.error('❌ Error saving analysis to history:', saveError);
+        // Don't fail the analysis if saving fails
+      }
+
+      console.log('🎉 Analysis completed successfully');
+
+    } catch (error) {
+      console.error('❌ Analysis failed:', error);
+      setAnalysisResult(prev => ({ ...prev, isAnalyzing: false }));
+      
+      Alert.alert(
+        '❌ Analysis Error',
+        'There was a problem analyzing your health data. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   const handleSubmit = async () => {
@@ -109,7 +206,8 @@ const HealthDataScreen = () => {
             diet: 'balanced',
             notes: '',
           });
-          console.log('🧹 Form fields cleared after successful save');
+          setAnalysisResult({}); // Clear analysis results too
+          console.log('🧹 Form fields and analysis results cleared after successful save');
         };
 
         // Clear fields immediately
@@ -302,6 +400,98 @@ const HealthDataScreen = () => {
           />
         </View>
 
+        {/* Analysis Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="analytics" size={24} color="#2E7D32" />
+            <Text style={styles.sectionTitle}>Get AI Health Analysis</Text>
+          </View>
+          <Text style={styles.sectionSubtitle}>
+            Analyze your symptoms and get personalized recommendations
+          </Text>
+          
+          <TouchableOpacity 
+            style={[styles.analysisButton, analysisResult.isAnalyzing && styles.analysisButtonDisabled]} 
+            onPress={analyzeHealthInput}
+            disabled={analysisResult.isAnalyzing}
+          >
+            <Ionicons 
+              name={analysisResult.isAnalyzing ? "hourglass" : "search"} 
+              size={20} 
+              color="#ffffff" 
+            />
+            <Text style={styles.analysisButtonText}>
+              {analysisResult.isAnalyzing ? 'Analyzing...' : 'Analyze My Health Data'}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Analysis Results */}
+          {analysisResult.riskAssessment && (
+            <View style={styles.analysisResults}>
+              <View style={styles.riskAssessmentCard}>
+                <View style={styles.riskHeader}>
+                  <Ionicons 
+                    name={
+                      analysisResult.riskAssessment.overallRisk === 'low' ? 'checkmark-circle' :
+                      analysisResult.riskAssessment.overallRisk === 'moderate' ? 'warning' : 'alert-circle'
+                    } 
+                    size={24} 
+                    color={
+                      analysisResult.riskAssessment.overallRisk === 'low' ? '#4CAF50' :
+                      analysisResult.riskAssessment.overallRisk === 'moderate' ? '#FF9800' : '#F44336'
+                    }
+                  />
+                  <Text style={[
+                    styles.riskLevel,
+                    { color: 
+                      analysisResult.riskAssessment.overallRisk === 'low' ? '#4CAF50' :
+                      analysisResult.riskAssessment.overallRisk === 'moderate' ? '#FF9800' : '#F44336'
+                    }
+                  ]}>
+                    {analysisResult.riskAssessment.overallRisk.toUpperCase()} RISK
+                  </Text>
+                </View>
+                
+                <Text style={styles.riskScore}>
+                  Risk Score: {analysisResult.riskAssessment.riskScore}/100
+                </Text>
+                
+                {analysisResult.confidence && (
+                  <Text style={styles.confidence}>
+                    Confidence: {Math.round(analysisResult.confidence * 100)}%
+                  </Text>
+                )}
+              </View>
+
+              {/* Recommendations */}
+              {analysisResult.recommendations && (
+                <View style={styles.recommendationsCard}>
+                  <View style={styles.recommendationsHeader}>
+                    <Ionicons name="bulb" size={20} color="#2E7D32" />
+                    <Text style={styles.recommendationsTitle}>Personalized Recommendations</Text>
+                  </View>
+                  <Text style={styles.recommendationsText}>
+                    {analysisResult.recommendations}
+                  </Text>
+                </View>
+              )}
+
+              {/* Immediate Actions */}
+              {analysisResult.riskAssessment.immediateActions && analysisResult.riskAssessment.immediateActions.length > 0 && (
+                <View style={styles.actionsCard}>
+                  <View style={styles.actionsHeader}>
+                    <Ionicons name="flash" size={20} color="#FF5722" />
+                    <Text style={styles.actionsTitle}>Immediate Actions</Text>
+                  </View>
+                  {analysisResult.riskAssessment.immediateActions.map((action: string, index: number) => (
+                    <Text key={index} style={styles.actionItem}>• {action}</Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+
         {/* Submit Button */}
         <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
           <Ionicons name="checkmark-circle" size={24} color="#ffffff" />
@@ -490,6 +680,121 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 10,
     fontFamily: fontFamily.buttonBold,
+  },
+  analysisButton: {
+    backgroundColor: '#1976D2',
+    borderRadius: 15,
+    paddingVertical: 15,
+    paddingHorizontal: 25,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  analysisButtonDisabled: {
+    backgroundColor: '#9E9E9E',
+    shadowOpacity: 0.1,
+    elevation: 2,
+  },
+  analysisButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+    fontFamily: fontFamily.bodySemiBold,
+  },
+  analysisResults: {
+    marginTop: 10,
+  },
+  riskAssessmentCard: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 15,
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+  },
+  riskHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  riskLevel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 8,
+    fontFamily: fontFamily.headingMedium,
+  },
+  riskScore: {
+    fontSize: 16,
+    color: '#333',
+    marginBottom: 5,
+    fontFamily: fontFamily.bodySemiBold,
+  },
+  confidence: {
+    fontSize: 14,
+    color: '#666',
+    fontFamily: fontFamily.body,
+  },
+  recommendationsCard: {
+    backgroundColor: '#e8f5e9',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 15,
+    borderWidth: 2,
+    borderColor: '#c8e6c9',
+  },
+  recommendationsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  recommendationsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2E7D32',
+    marginLeft: 8,
+    fontFamily: fontFamily.bodySemiBold,
+  },
+  recommendationsText: {
+    fontSize: 14,
+    color: '#333',
+    lineHeight: 20,
+    fontFamily: fontFamily.body,
+  },
+  actionsCard: {
+    backgroundColor: '#fff3e0',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#ffcc02',
+  },
+  actionsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  actionsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FF5722',
+    marginLeft: 8,
+    fontFamily: fontFamily.bodySemiBold,
+  },
+  actionItem: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 5,
+    lineHeight: 18,
+    fontFamily: fontFamily.body,
   },
 });
 

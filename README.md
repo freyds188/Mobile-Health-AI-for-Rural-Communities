@@ -62,6 +62,51 @@ Locations:
 - Scripts: `src/scripts/*`
 - Services used by training/inference: `src/services/*`
 
+## MATLAB Analysis (SOP 1 and SOP 3)
+
+We provide MATLAB scripts to implement and evaluate:
+
+- SOP 1: K-means clustering to detect recurring symptom patterns over time in rural patient data.
+- SOP 3: Supervised models (SVM, Decision Tree) to classify risk based on age, gender, past conditions, and current symptoms.
+
+Outputs (figures, .mat files, and CSV summaries) are saved under:
+
+`matlab/results/project_evaluation/`
+
+### How to Run
+
+Windows PowerShell (MATLAB must be on PATH):
+
+```powershell
+matlab -batch "run_all('C:/Users/aldri/OneDrive/Desktop/THESIS-2')"
+```
+
+Or in MATLAB Command Window:
+
+```matlab
+run_all('C:/Users/aldri/OneDrive/Desktop/THESIS-2')
+```
+
+Run modules individually:
+
+```matlab
+sop1_kmeans('C:/Users/aldri/OneDrive/Desktop/THESIS-2', 4, 'sqeuclidean');
+sop3_classification('File: preprocessData.m Line: 23 Column: 5
+Function argument definition error in preprocessData. varargin can only be used inside Repeating arguments block.
+
+Error in sop1_kmeans (line 29)
+[X, featureNames, ~, timeVec, meta] = preprocessData(T, "TopSymptoms", 25, "TopConditions", 20, "Standardize", true);', {"svm","tree"});
+```
+
+### Data
+
+- If CSVs exist in `datasets/`, the scripts will load them. Otherwise, a synthetic dataset is generated with realistic patterns, including symptoms, timestamps, demographics, and labels.
+
+### What is Produced
+
+- SOP1 (K-means): PCA cluster plot, cluster distribution over time, silhouette plot, top-features per cluster; metrics (inertia, silhouette mean, cluster sizes); `sop1_kmeans_result.mat` and `sop1_cluster_sizes.csv`.
+- SOP3 (Classification): Confusion matrices, optional score distributions, feature importance (trees); metrics CSV `sop3_metrics_summary.csv` and `sop3_classification_results.mat`.
+
 ## End-to-End Training (Interactive)
 
 Use the helper scripts to guide you through setup and training.

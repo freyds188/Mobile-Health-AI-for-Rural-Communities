@@ -44,6 +44,7 @@ interface HealthDataContextType {
   addHealthData: (data: Omit<HealthData, 'id' | 'timestamp' | 'userId'>) => Promise<boolean>;
   getHealthData: (userId: string) => HealthData[];
   analyzeHealthData: (userId: string) => Promise<HealthInsight | null>;
+  saveAnalysisInsight: (analysisResult: any, recommendations: string) => Promise<boolean>;
   getInsights: (userId: string) => HealthInsight[];
   refreshData: () => Promise<void>;
   // New deployed model features
@@ -319,6 +320,83 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   };
 
+  const saveAnalysisInsight = async (analysisResult: any, recommendations: string): Promise<boolean> => {
+    if (!user) {
+      console.error('❌ No user logged in');
+      return false;
+    }
+
+    try {
+      setIsLoading(true);
+      console.log('💾 Saving analysis insight for user:', user.id);
+      
+      // Ensure database is initialized
+      await dataService.initialize();
+      
+      // Prepare insight data for database
+      const insightData = {
+        userId: user.id,
+        timestamp: new Date().toISOString(),
+        riskLevel: analysisResult.overallRisk === 'low' ? 'low' : 
+                   analysisResult.overallRisk === 'moderate' ? 'medium' : 'high',
+        patterns: JSON.stringify([
+          `Risk Score: ${analysisResult.riskScore}/100`,
+          `Severity Risk: ${analysisResult.severityRisk}`,
+          `Lifestyle Risk: ${analysisResult.lifestyleRisk}`,
+          `Symptom Risk: ${analysisResult.symptomRisk}`
+        ]),
+        recommendations: JSON.stringify([recommendations]),
+        confidence: analysisResult.confidence || 0.8,
+        algorithmVersion: 'ProductionRiskAssessment_v1.0'
+      };
+
+      console.log('📊 Saving insight data:', insightData);
+
+      // Save to database
+      const insightId = await databaseService.saveHealthInsight(insightData);
+      
+      if (insightId) {
+        console.log('✅ Analysis insight saved with ID:', insightId);
+        
+        // Add to local insights state
+        const newInsight: HealthInsight = {
+          id: insightId,
+          userId: user.id,
+          timestamp: new Date(),
+          riskLevel: insightData.riskLevel,
+          patterns: JSON.parse(insightData.patterns),
+          recommendations: JSON.parse(insightData.recommendations),
+          confidence: insightData.confidence,
+          dataPoints: healthData.filter(d => d.userId === user.id).length,
+          trendsAnalysis: {
+            severityTrend: 'stable',
+            sleepTrend: 'stable', 
+            stressTrend: 'stable',
+            exerciseTrend: 'stable'
+          }
+        };
+        
+        setInsights(prev => [...prev, newInsight]);
+        console.log('📊 Added insight to local state');
+        
+        // Force refresh data to ensure consistency
+        setTimeout(() => {
+          console.log('🔄 Refreshing data after insight save...');
+          refreshData();
+        }, 500);
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('❌ Error saving analysis insight:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getInsights = (userId: string): HealthInsight[] => {
     return insights.filter(insight => insight.userId === userId);
   };
@@ -450,6 +528,7 @@ export const HealthDataProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     addHealthData,
     getHealthData,
     analyzeHealthData,
+    saveAnalysisInsight,
     getInsights,
     refreshData,
     // New deployed model features
